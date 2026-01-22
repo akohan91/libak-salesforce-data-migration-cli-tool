@@ -1,0 +1,25 @@
+{
+  "name": "sf-data-migration-tool",
+  "version": "0.0.1",
+  "description": "A CLI tool to replicate data from one Salesforce org to another",
+  "main": "src/index.js",
+  "type": "module",
+  "keywords": [
+    "salesforce",
+    "data-migration",
+    "cli",
+    "replication",
+    "sf"
+  ],
+  "author": "Andrei Kakhanouski",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "jsforce": "^3.3.0"
+  },
+  "devDependencies": {
+  }
+}

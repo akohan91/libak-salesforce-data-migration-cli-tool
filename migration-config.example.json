@@ -1,0 +1,33 @@
+{
+	"apiName": "Account",
+	"recordIds": [
+		"001XXXXXXXXXXXXXXX"
+	],
+	"referenceField": null,
+	"excludedFields": [],
+	"children": [{
+			"apiName": "Contact",
+			"referenceField": "AccountId"
+		},
+		{
+			"apiName": "Case",
+			"referenceField": "AccountId",
+			"excludedFields": []
+		},
+		{
+			"apiName": "Opportunity",
+			"referenceField": "AccountId",
+			"excludedFields": [],
+			"children": [{
+				"apiName": "OpportunityLineItem",
+				"referenceField": "OpportunityId",
+				"excludedFields": []
+			}]
+		},
+		{
+			"apiName": "Contract",
+			"referenceField": "AccountId",
+			"excludedFields": []
+		}
+	]
+}
