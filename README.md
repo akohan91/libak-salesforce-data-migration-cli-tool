@@ -52,6 +52,8 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 
 ⚡ **Built on Official Tools** - Leverages Salesforce CLI for authentication and JSForce for robust API interactions
 
+🔍 **Detailed Error Reporting** - Get specific error messages with reference IDs, status codes, and affected fields
+
 ---
 
 ## Getting Started
@@ -114,12 +116,31 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
      --export-config migration-config.json
    ```
 
-4. The tool will:
-   - Export records from the source org
-   - Generate JSON files in `_output/` directory
-   - Create an import plan
-   - Display success confirmation
-   - Import records to target org
+4. Monitor the migration process:
+   ```
+   🚀 Salesforce Data Migration Tool
+
+   📡 Connecting to Salesforce orgs...
+       ✅ Successfully connected to source and target orgs
+
+   📄 Loading export configuration...
+       ✅ Configuration loaded: migration-config.json
+
+   📥 Extracting data from source org...
+       ✅ Retrieved 1 Account record
+       ✅ Retrieved 3 Contact records
+
+   📋 Building import plan...
+       ✅ Import plan created
+
+   📤 Importing records to target org...
+   ✅ Records imported successfully
+
+   🔄 Updating record references...
+   ✅ Record references updated successfully
+
+   ✅ Migration completed successfully!
+   ```
 
 ---
 

@@ -1,45 +1,43 @@
-/**
- * @fileoverview Database service for executing Salesforce SOQL queries.
- * @module services/database
- */
+import { formatUpdateErrors, displayUpdateResults } from "./salesforce-error-handler.js";
 
-/**
- * Service class for executing SOQL queries against Salesforce.
- */
 export class Database {
-	/**
-	 * Creates a new Database instance.
-	 * @param {SalesforceConnection} sourceConnection - The Salesforce connection to use for queries
-	 */
-	constructor(sourceConnection) {
-		this.sourceConnection = sourceConnection;
+	
+	constructor(connection) {
+		this.connection = connection;
 	}
 
-	/**
-	 * Executes a SOQL query and returns the records.
-	 * @async
-	 * @param {string} soql - The SOQL query string to execute
-	 * @returns {Promise<Array<Object>>} Array of records returned by the query
-	 * @throws {Error} If not connected to Salesforce
-	 */
 	async query(soql) {
-		if (!this.sourceConnection.getConnection()) {
+		if (!this.connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 
-		const result = await this.sourceConnection.getConnection().query(soql);
+		const result = await this.connection.query(soql);
 		return result.records;
 	}
 
 	async update(sObjectApiName, records) {
-		if (!this.sourceConnection.getConnection()) {
+		if (!this.connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 
-		const result = await this.sourceConnection
-			.getConnection()
+		const rets = await this.connection
 			.sobject(sObjectApiName)
 			.update(records);
-		return result;
+		
+		const summary = formatUpdateErrors(rets, sObjectApiName);
+		displayUpdateResults(summary, sObjectApiName);
+	}
+
+	async sObjectDescribe(objectName) {
+		if (!this.connection) {
+			throw new Error('Not connected to Salesforce. Call connect() first.');
+		}
+
+		const response = await this.connection.request({
+			method: 'GET',
+			url: `/services/data/v62.0/sobjects/${objectName}/describe`
+		});
+
+		return response;
 	}
 }
