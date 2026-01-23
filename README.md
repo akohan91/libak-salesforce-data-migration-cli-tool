@@ -10,6 +10,8 @@
 
 A powerful command-line tool that simplifies migrating Salesforce data between orgs while automatically preserving parent-child relationships and referential integrity.
 
+> **Special Thanks:** Inspired by [Pawel Kalinowski](https://www.linkedin.com/in/pawel-kalinowski-3050a412b/)
+
 ---
 
 ## Table of Contents
