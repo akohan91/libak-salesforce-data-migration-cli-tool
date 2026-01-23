@@ -25,33 +25,31 @@ export class RecordFormatter {
 	 * @param {Object} exportConfig - The export configuration
 	 * @returns {Promise<Object>} Formatted records object with records array
 	 */
-	async formatForImport(records, exportConfig) {
+	async formatForImport(records, sObjectApiName) {
 		this.sObjectMetadata = await this.sObjectDescribeService
-			.describe(exportConfig.apiName);
+			.describe(sObjectApiName);
 		this.referenceFields = this.sObjectMetadata.fields
 			.map(field => field.type === 'reference' && field.name);
 
-		return this._formatRecords(records, exportConfig);
-	}
-
-	/**
-	 * Formats an array of records with reference attributes.
-	 * @private
-	 * @param {Array<Object>} records - The records to format
-	 * @param {Object} exportConfig - The export configuration
-	 * @returns {Object} Object containing formatted records array
-	 */
-	_formatRecords(records, exportConfig) {
-		const formattedRecords = records.map((record, index) => {
-			const referenceId = `${exportConfig.apiName}Ref${index + 1}`;
+		return records.map((record, index) => {
+			const referenceId = `${sObjectApiName}Ref${index + 1}`;
 			this.recordIdToReference.set(record.Id, referenceId);
 			let cleaned = this._cleanRecord(record);
-			return addReferenceAttributes(cleaned, exportConfig.apiName, referenceId);
+			return addReferenceAttributes(cleaned, sObjectApiName, referenceId);
 		});
+	}
 
-		return {
-			records: formattedRecords
-		};
+	async formatForSyncReferences(records, sObjectApiName, referenceToRecordId) {
+		this.sObjectMetadata = await this.sObjectDescribeService
+			.describe(sObjectApiName);
+		this.referenceFields = this.sObjectMetadata.fields
+			.map(field => field.type === 'reference' && field.name);
+		
+		return records.map((record) => {
+			delete record.attributes;
+			record.Id = referenceToRecordId[this.recordIdToReference.get(record.Id)]
+			return this._cleanRecord(record, referenceToRecordId);
+		});
 	}
 
 	/**
@@ -60,12 +58,12 @@ export class RecordFormatter {
 	 * @param {Object} record - The record to clean
 	 * @returns {Object} Cleaned record
 	 */
-	_cleanRecord(record) {
+	_cleanRecord(record, referenceToRecordId = null) {
 		const cleaned = { ...record };
 		for (const fieldName in cleaned) {
 			if (fieldName !== 'RecordTypeId') {
 				deleteNulls(cleaned, fieldName);
-				assignReferences(cleaned, fieldName, this.referenceFields, this.recordIdToReference);
+				assignReferences(cleaned, fieldName, this.referenceFields, this.recordIdToReference, referenceToRecordId);
 			}
 		}
 		
@@ -110,18 +108,20 @@ const deleteNulls = (record, fieldName) => {
  * @param {Object} record - The record to modify
  * @param {string} fieldName - The field name to check
  * @param {Array<string>} referenceFields - List of reference field names
- * @param {Map} referencesMap - Map of record IDs to reference IDs
+ * @param {Map} recordIdToReference - Map of record IDs to reference IDs
  * @returns {Object} Record with references assigned
  */
-const assignReferences = (record, fieldName, referenceFields, referencesMap) => {
+const assignReferences = (record, fieldName, referenceFields, recordIdToReference, referenceToRecordId = null) => {
 	if (
 		referenceFields.includes(fieldName) &&
-		referencesMap.has(record[fieldName])
+		recordIdToReference.has(record[fieldName])
 	) {
-		record[fieldName] = `@${referencesMap.get(record[fieldName])}`;
+		record[fieldName] = Boolean(referenceToRecordId)
+			? referenceToRecordId[recordIdToReference.get(record[fieldName])]
+			: `@${recordIdToReference.get(record[fieldName])}`;
 	} else if (
 		referenceFields.includes(fieldName) &&
-		!referencesMap.has(record[fieldName])
+		!recordIdToReference.has(record[fieldName])
 	) {
 		delete record[fieldName];
 	}

@@ -7,7 +7,10 @@
 
 import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { execSync } from 'child_process';
+
 import { program }  from 'commander';
+
+import { setOptions, getOptions } from './services/app-options.js'
 import { SalesforceConnection } from './services/salesforce-connection.js';
 import { RecordFormatter } from './services/record-formatter.js'
 import { MigrateService } from './services/migrate-service.js'
@@ -19,16 +22,16 @@ program
 	.option('-s, --source-org <name>', 'Organization from where the data comes.')
 	.option('-t, --target-org <name>', 'Organization to where the data comes.')
 	.option('-e, --export-config <name>', 'Path to the import configuration file')
-	.parse(process.argv)
-const options = program.opts();
+	.parse(process.argv);
+setOptions(program.opts());
 
 const loginConfig = JSON.parse(execSync(
-	`sf org display --target-org ${options.sourceOrg} --verbose --json`,
+	`sf org display --target-org ${getOptions().sourceOrg} --verbose --json`,
 	{ encoding: 'utf-8' }
 ));
 
 const exportConfig = JSON.parse(
-	readFileSync(options.exportConfig, 'utf-8')
+	readFileSync(getOptions().exportConfig, 'utf-8')
 );
 
 if (!existsSync('_output')) {
@@ -45,13 +48,6 @@ if (!existsSync('_output')) {
 		new RecordFormatter(
 			new SObjectDescribeService(sourceConnection)
 		),
-		exportConfig
-	).migrateData();
-	
-	new ImportPlanBuilder().buildImportPlan(exportConfig);
-
-	const {result} = JSON.parse(execSync(
-		`sf data import tree --target-org ${options.targetOrg} --json --plan ./_output/_import-plan.json`,
-		{ encoding: 'utf-8' }
-	));
+		new ImportPlanBuilder()
+	).migrateData(exportConfig);
 })();

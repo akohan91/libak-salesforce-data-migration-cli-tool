@@ -5,6 +5,10 @@
 
 import { SoqlBuilder } from "./soql-builder.js";
 import { writeFileSync } from 'fs';
+import { execSync } from 'child_process';
+import { getOptions } from './app-options.js'
+import { Database } from "./database.js";
+import { SalesforceConnection } from "./salesforce-connection.js";
 
 /**
  * Service class that orchestrates the data migration process, including
@@ -18,11 +22,54 @@ export class MigrateService {
 	 * @param {RecordFormatter} recordFormatter - The record formatter service
 	 * @param {Object} exportConfig - Configuration object defining what to export
 	 */
-	constructor(sourceConnection, database, recordFormatter, exportConfig) {
+	constructor(sourceConnection, database, recordFormatter, importPlanBuilder) {
 		this.sourceConnection = sourceConnection;
 		this.database = database;
 		this.recordFormatter = recordFormatter;
-		this.exportConfig = structuredClone(exportConfig);
+		this.importPlanBuilder = importPlanBuilder;
+		this.objectTypeToRecords = {};
+	}
+
+	async migrateData(exportConfig) {
+		exportConfig = structuredClone(exportConfig);
+		await this._migrateData(exportConfig);
+		this.importPlanBuilder.buildImportPlan(exportConfig);
+		const {result} = JSON.parse(execSync(
+			`sf data import tree --target-org ${getOptions().targetOrg} --json --plan ./_output/_import-plan.json`,
+			{ encoding: 'utf-8' }
+		));
+		
+		for (const sObjectName in this.objectTypeToRecords) {
+			const formattedRecords = await this.recordFormatter.formatForSyncReferences(
+				this.objectTypeToRecords[sObjectName],
+				sObjectName,
+				result.reduce((result, item) => {
+					result[item.refId] = item.id
+					return result
+				}, {})
+			);
+
+			const loginConfig = JSON.parse(execSync(
+				`sf org display --target-org ${getOptions().targetOrg} --verbose --json`,
+				{ encoding: 'utf-8' }
+			));
+
+			const targetConnection = new SalesforceConnection(loginConfig.result);
+			await targetConnection.connect();
+
+			const rets = await new Database(targetConnection).update(sObjectName, formattedRecords);
+			for (const ret of rets) {
+				if (ret.success) {
+					console.log(`Updated Successfully : ${ret.id}`);
+				} else {
+					ret.errors.forEach(error => {
+						console.log(error);
+					});
+				}
+			}
+			
+		}
+		
 	}
 
 	/**
@@ -31,32 +78,27 @@ export class MigrateService {
 	 * @async
 	 * @returns {Promise<void>}
 	 */
-	async migrateData() {
-		const soql = await new SoqlBuilder(this.sourceConnection, this.exportConfig).buildSOQL();
+	async _migrateData(exportConfig) {
+		const soql = await new SoqlBuilder(this.sourceConnection, exportConfig).buildSOQL();
 		if (!soql) {
 			return;
 		}
-		
 		const records = await this.database.query(soql);
-		this.exportConfig = this._updateExportConfigRecordIds(this.exportConfig, records);
+		this.objectTypeToRecords[exportConfig.apiName] = structuredClone(records);
 
-		const formattedRecords = await this.recordFormatter.formatForImport(records, this.exportConfig);
+		exportConfig = this._updateExportConfigRecordIds(exportConfig, records);
+		const formattedRecords = await this.recordFormatter.formatForImport(records, exportConfig.apiName);
 
-		this._writeRecordsToFile(this.exportConfig.apiName, formattedRecords);
-		console.log(`${this.exportConfig.apiName} records were retrieved.`);
+		this._writeRecordsToFile(exportConfig.apiName, {records: formattedRecords});
+		console.log(`${exportConfig.apiName} records were retrieved.`);
 
-		if (!this.exportConfig.children?.length) {
+		if (!exportConfig.children?.length) {
 			return;
 		}
-		for (let childConfig of this.exportConfig.children) {
+		for (let childConfig of exportConfig.children) {
 			childConfig = structuredClone(childConfig);
-			childConfig.parentRecordIds = this.exportConfig?.recordIds || [];
-			await new MigrateService(
-				this.sourceConnection,
-				this.database,
-				this.recordFormatter,
-				childConfig
-			).migrateData();
+			childConfig.parentRecordIds = exportConfig?.recordIds || [];
+			await this._migrateData(childConfig);
 		}
 	}
 

@@ -30,4 +30,16 @@ export class Database {
 		const result = await this.sourceConnection.getConnection().query(soql);
 		return result.records;
 	}
+
+	async update(sObjectApiName, records) {
+		if (!this.sourceConnection.getConnection()) {
+			throw new Error('Not connected to Salesforce. Call connect() first.');
+		}
+
+		const result = await this.sourceConnection
+			.getConnection()
+			.sobject(sObjectApiName)
+			.update(records);
+		return result;
+	}
 }
