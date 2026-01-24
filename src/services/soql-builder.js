@@ -1,14 +1,14 @@
 export class SoqlBuilder {
-	constructor(database, exportConfig) {
+	constructor(database, treeConfig) {
 		this.database = database;
-		this.exportConfig = structuredClone(exportConfig);
+		this.treeConfig = structuredClone(treeConfig);
 	}
 
 	async buildSOQL() {
-		const fieldsStr = (await this._getFields(this.exportConfig.apiName)).join(',');
-		const recordIdList = this.exportConfig.referenceField
-			? this.exportConfig?.parentRecordIds.map(id => `'${id}'`).join(',')
-			: this.exportConfig?.recordIds.map(id => `'${id}'`).join(',');
+		const fieldsStr = (await this._getFields(this.treeConfig.apiName)).join(',');
+		const recordIdList = this.treeConfig.referenceField
+			? this.treeConfig?.parentRecordIds.map(id => `'${id}'`).join(',')
+			: this.treeConfig?.recordIds.map(id => `'${id}'`).join(',');
 		
 		if (!recordIdList?.length) {
 			return null;
@@ -16,8 +16,8 @@ export class SoqlBuilder {
 
 		return `
 		SELECT ${fieldsStr}
-		FROM ${this.exportConfig.apiName}
-		WHERE ${this.exportConfig.referenceField || 'Id'} IN (${recordIdList})`;
+		FROM ${this.treeConfig.apiName}
+		WHERE ${this.treeConfig.referenceField || 'Id'} IN (${recordIdList})`;
 	}
 
 	async _getFields(sObjectApiName) {
@@ -28,7 +28,7 @@ export class SoqlBuilder {
 				if (field.type === 'id') {
 					return true;
 				}
-				if (!field.createable || this.exportConfig.excludedFields?.includes(field.name)) {
+				if (!field.createable || this.treeConfig.excludedFields?.includes(field.name)) {
 					return false;
 				}
 				return true;

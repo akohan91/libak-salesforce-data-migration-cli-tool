@@ -7,7 +7,9 @@ import { SobjectReferenceService } from "./sobject-reference-service.js";
 import { ImportPlanBuilder } from "./import-plan-builder.js";
 
 export class MigrateService {
-	constructor() {
+	constructor(treeConfig, nonTreeConfig) {
+		this.treeConfig = structuredClone(treeConfig);
+		this.nonTreeConfig = structuredClone(nonTreeConfig);
 		this.importPlanBuilder = new ImportPlanBuilder;
 		this.objectTypeToSourceRecords = {};
 		this.sourceDataBase = new Database(getConnection(getArgs().sourceOrg));
@@ -15,14 +17,12 @@ export class MigrateService {
 		this.sobjectReferenceService = new SobjectReferenceService(this.sourceDataBase);
 	}
 
-	async migrateData(exportConfig) {
-		exportConfig = structuredClone(exportConfig);
-		
+	async migrateData() {
 		console.log('📥 Extracting data from source org...');
-		await this._writeDataFiles(exportConfig);
+		await this._writeDataFiles(this.treeConfig);
 		
 		console.log('\n📋 Building import plan...');
-		this.importPlanBuilder.writeImportPlanFile(exportConfig);
+		this.importPlanBuilder.writeImportPlanFile(this.treeConfig);
 		console.log('\t✅ Import plan created\n');
 		
 		console.log('📤 Importing records to target org...');
@@ -41,26 +41,26 @@ export class MigrateService {
 		console.log('✅ Record references updated successfully');
 	}
 
-	async _writeDataFiles(exportConfig) {
-		const soql = await new SoqlBuilder(this.sourceDataBase, exportConfig).buildSOQL();
+	async _writeDataFiles(treeConfig) {
+		const soql = await new SoqlBuilder(this.sourceDataBase, treeConfig).buildSOQL();
 		if (!soql) {
 			return;
 		}
 		const records = await this.sourceDataBase.query(soql);
-		this.objectTypeToSourceRecords[exportConfig.apiName] = structuredClone(records);
+		this.objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records);
 
-		exportConfig = this._updateExportConfigRecordIds(exportConfig, records);
-		const formattedRecords = await this.sobjectReferenceService.formatForImport(records, exportConfig.apiName);
+		treeConfig = this._updateTreeConfigRecordIds(treeConfig, records);
+		const formattedRecords = await this.sobjectReferenceService.formatForImport(records, treeConfig.apiName);
 
-		this._writeRecordsToFile(exportConfig.apiName, {records: formattedRecords});
-		console.log(`\t✅ Retrieved ${records.length} ${exportConfig.apiName} record${records.length !== 1 ? 's' : ''}`);
+		this._writeRecordsToFile(treeConfig.apiName, {records: formattedRecords});
+		console.log(`\t✅ Retrieved ${records.length} ${treeConfig.apiName} record${records.length !== 1 ? 's' : ''}`);
 
-		if (!exportConfig.children?.length) {
+		if (!treeConfig.children?.length) {
 			return;
 		}
-		for (let childConfig of exportConfig.children) {
+		for (let childConfig of treeConfig.children) {
 			childConfig = structuredClone(childConfig);
-			childConfig.parentRecordIds = exportConfig?.recordIds || [];
+			childConfig.parentRecordIds = treeConfig?.recordIds || [];
 			await this._writeDataFiles(childConfig);
 		}
 	}
@@ -72,10 +72,10 @@ export class MigrateService {
 		);
 	}
 
-	_updateExportConfigRecordIds(exportConfig, records) {
-		exportConfig = structuredClone(exportConfig);
-		exportConfig.recordIds = records.map(record => record.Id);
-		return exportConfig;
+	_updateTreeConfigRecordIds(treeConfig, records) {
+		treeConfig = structuredClone(treeConfig);
+		treeConfig.recordIds = records.map(record => record.Id);
+		return treeConfig;
 	}
 
 	_insertPlan() {
