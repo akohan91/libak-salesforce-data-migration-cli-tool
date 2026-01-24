@@ -14,7 +14,7 @@ export class RecordFormatter {
 		return records.map((record, index) => {
 			const referenceId = `${sObjectApiName}Ref${index + 1}`;
 			this.recordIdToReference.set(record.Id, referenceId);
-			let cleaned = this._cleanRecord(record);
+			let cleaned = this._assignReferences(record);
 			return addReferenceAttributes(cleaned, sObjectApiName, referenceId);
 		});
 	}
@@ -28,16 +28,16 @@ export class RecordFormatter {
 		return records.map((record) => {
 			delete record.attributes;
 			record.Id = referenceToRecordId[this.recordIdToReference.get(record.Id)]
-			return this._cleanRecord(record, referenceToRecordId);
+			return this._assignReferences(record, referenceToRecordId);
 		});
 	}
 
-	_cleanRecord(record, referenceToRecordId = null) {
+	_assignReferences(record, referenceToRecordId = null) {
 		const cleaned = { ...record };
 		for (const fieldName in cleaned) {
 			if (fieldName !== 'RecordTypeId') {
 				deleteNulls(cleaned, fieldName);
-				assignReferences(cleaned, fieldName, this.referenceFields, this.recordIdToReference, referenceToRecordId);
+				assignReferenceField(cleaned, fieldName, this.referenceFields, this.recordIdToReference, referenceToRecordId);
 			}
 		}
 		
@@ -64,17 +64,18 @@ const deleteNulls = (record, fieldName) => {
 	return record;
 }
 
-const assignReferences = (record, fieldName, referenceFields, recordIdToReference, referenceToRecordId = null) => {
+const assignReferenceField = (record, fieldName, referenceFields, recordIdToReference, referenceToRecordId = null) => {
+	const fieldValue = record[fieldName];
 	if (
 		referenceFields.includes(fieldName) &&
-		recordIdToReference.has(record[fieldName])
+		recordIdToReference.has(fieldValue)
 	) {
 		record[fieldName] = Boolean(referenceToRecordId)
-			? referenceToRecordId[recordIdToReference.get(record[fieldName])]
-			: `@${recordIdToReference.get(record[fieldName])}`;
+			? referenceToRecordId[recordIdToReference.get(fieldValue)]
+			: `@${recordIdToReference.get(fieldValue)}`;
 	} else if (
 		referenceFields.includes(fieldName) &&
-		!recordIdToReference.has(record[fieldName])
+		!recordIdToReference.has(fieldValue)
 	) {
 		delete record[fieldName];
 	}
