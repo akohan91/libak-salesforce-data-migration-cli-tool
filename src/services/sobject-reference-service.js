@@ -5,7 +5,7 @@ export class SobjectReferenceService {
 		this.referenceFields = [];
 	}
 
-	async formatForImport(records, sObjectApiName) {
+	async linkTreeReferences(records, sObjectApiName) {
 		this.sObjectMetadata = await this.database
 			.sObjectDescribe(sObjectApiName);
 		this.referenceFields = this.sObjectMetadata.fields
@@ -14,12 +14,17 @@ export class SobjectReferenceService {
 		return records.map((record, index) => {
 			const referenceId = `${sObjectApiName}Ref${index + 1}`;
 			this.recordIdToReference.set(record.Id, referenceId);
-			let cleaned = this._assignReferences(record);
-			return addReferenceAttributes(cleaned, sObjectApiName, referenceId);
+			for (const fieldName in record) {
+				this._deleteNulls(record, fieldName);
+				if (fieldName !== 'RecordTypeId') {
+					this._linkReferenceField(record, fieldName);
+				}
+			}
+			return this._addReferenceAttributes(record, sObjectApiName, referenceId);
 		});
 	}
 
-	async formatForSyncReferences(records, sObjectApiName, referenceToRecordId) {
+	async assignReferences(records, sObjectApiName, referenceToRecordId = null) {
 		this.sObjectMetadata = await this.database
 			.sObjectDescribe(sObjectApiName);
 		this.referenceFields = this.sObjectMetadata.fields
@@ -27,57 +32,68 @@ export class SobjectReferenceService {
 		
 		return records.map((record) => {
 			delete record.attributes;
-			record.Id = referenceToRecordId[this.recordIdToReference.get(record.Id)]
-			return this._assignReferences(record, referenceToRecordId);
+			record.Id = referenceToRecordId[this.recordIdToReference.get(record.Id)];
+			for (const fieldName in record) {
+				this._deleteNulls(record, fieldName);
+				if (fieldName !== 'RecordTypeId') {
+					this._assignReferenceField(record, fieldName, referenceToRecordId);
+				}
+			}
+			return record;
 		});
 	}
 
-	_assignReferences(record, referenceToRecordId = null) {
-		const cleaned = { ...record };
-		for (const fieldName in cleaned) {
-			if (fieldName !== 'RecordTypeId') {
-				deleteNulls(cleaned, fieldName);
-				assignReferenceField(cleaned, fieldName, this.referenceFields, this.recordIdToReference, referenceToRecordId);
-			}
+	
+	_addReferenceAttributes (record, sObjectApiName, referenceId) {
+		delete record.attributes;
+		delete record.Id;
+		return {
+			attributes: {
+				type: sObjectApiName,
+				referenceId
+			},
+			...record
+		};
+	}
+
+	_deleteNulls (record, fieldName) {
+		if (record[fieldName] === null || record[fieldName] === undefined) {
+			delete record[fieldName];
 		}
-		
-		return cleaned;
+		return record;
 	}
-}
 
-const addReferenceAttributes = (record, sObjectApiName, referenceId) => {
-	delete record.attributes;
-	delete record.Id;
-	return {
-		attributes: {
-			type: sObjectApiName,
-			referenceId
-		},
-		...record
-	};
-}
-
-const deleteNulls = (record, fieldName) => {
-	if (record[fieldName] === null || record[fieldName] === undefined) {
-		delete record[fieldName];
+	_linkReferenceField (record, fieldName) {
+		const fieldValue = record[fieldName];
+		if (
+			this.referenceFields.includes(fieldName) &&
+			this.recordIdToReference.has(fieldValue)
+		) {
+			record[fieldName] = `@${this.recordIdToReference.get(fieldValue)}`;
+		} else if (
+			this.referenceFields.includes(fieldName) &&
+			!this.recordIdToReference.has(fieldValue)
+		) {
+			delete record[fieldName];
+		}
+		return record;
 	}
-	return record;
-}
 
-const assignReferenceField = (record, fieldName, referenceFields, recordIdToReference, referenceToRecordId = null) => {
-	const fieldValue = record[fieldName];
-	if (
-		referenceFields.includes(fieldName) &&
-		recordIdToReference.has(fieldValue)
-	) {
-		record[fieldName] = Boolean(referenceToRecordId)
-			? referenceToRecordId[recordIdToReference.get(fieldValue)]
-			: `@${recordIdToReference.get(fieldValue)}`;
-	} else if (
-		referenceFields.includes(fieldName) &&
-		!recordIdToReference.has(fieldValue)
-	) {
-		delete record[fieldName];
+	_assignReferenceField (record, fieldName, referenceToRecordId) {
+		const fieldValue = record[fieldName];
+		if (
+			this.referenceFields.includes(fieldName) &&
+			this.recordIdToReference.has(fieldValue)
+		) {
+			record[fieldName] = Boolean(referenceToRecordId)
+				? referenceToRecordId[this.recordIdToReference.get(fieldValue)]
+				: `@${this.recordIdToReference.get(fieldValue)}`;
+		} else if (
+			this.referenceFields.includes(fieldName) &&
+			!this.recordIdToReference.has(fieldValue)
+		) {
+			delete record[fieldName];
+		}
+		return record;
 	}
-	return record;
 }

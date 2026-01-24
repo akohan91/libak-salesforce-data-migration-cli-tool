@@ -31,7 +31,7 @@ export class MigrateService {
 
 		console.log('🔄 Updating record references...');
 		for (const sObjectName in this.objectTypeToSourceRecords) {
-			const formattedRecords = await this.sobjectReferenceService.formatForSyncReferences(
+			const formattedRecords = await this.sobjectReferenceService.assignReferences(
 				this.objectTypeToSourceRecords[sObjectName],
 				sObjectName,
 				referenceToRecordId
@@ -49,8 +49,8 @@ export class MigrateService {
 		const records = await this.sourceDataBase.query(soql);
 		this.objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records);
 
-		treeConfig = this._updateTreeConfigRecordIds(treeConfig, records);
-		const formattedRecords = await this.sobjectReferenceService.formatForImport(records, treeConfig.apiName);
+		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
+		const formattedRecords = await this.sobjectReferenceService.linkTreeReferences(records, treeConfig.apiName);
 
 		this._writeRecordsToFile(treeConfig.apiName, {records: formattedRecords});
 		console.log(`\t✅ Retrieved ${records.length} ${treeConfig.apiName} record${records.length !== 1 ? 's' : ''}`);
@@ -72,7 +72,7 @@ export class MigrateService {
 		);
 	}
 
-	_updateTreeConfigRecordIds(treeConfig, records) {
+	_addTreeConfigRecordIds(treeConfig, records) {
 		treeConfig = structuredClone(treeConfig);
 		treeConfig.recordIds = records.map(record => record.Id);
 		return treeConfig;
