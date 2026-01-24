@@ -4,6 +4,7 @@ export class Database {
 	
 	constructor(connection) {
 		this.connection = connection;
+		this.sObjectNameToDescribe = {};
 	}
 
 	async query(soql) {
@@ -28,16 +29,23 @@ export class Database {
 		displayUpdateResults(summary, sObjectApiName);
 	}
 
-	async sObjectDescribe(objectName) {
+	async sObjectDescribe(sObjectName) {
 		if (!this.connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
-
+		if (this._getExistingDescribe[sObjectName]) {
+			return this._getExistingDescribe[sObjectName];
+		}
 		const response = await this.connection.request({
 			method: 'GET',
-			url: `/services/data/v62.0/sobjects/${objectName}/describe`
+			url: `/services/data/v62.0/sobjects/${sObjectName}/describe`
 		});
+		this.sObjectNameToDescribe[sObjectName] = response;
 
 		return response;
+	}
+
+	_getExistingDescribe(sObjectName) {
+		return this.sObjectNameToDescribe[sObjectName];
 	}
 }
