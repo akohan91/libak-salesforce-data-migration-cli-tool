@@ -3,7 +3,7 @@ import { writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { getArgs, getConnection } from '../cli.js'
 import { Database } from "./database.js";
-import { RecordFormatter } from "./record-formatter.js";
+import { SobjectReferenceService } from "./sobject-reference-service.js";
 import { ImportPlanBuilder } from "./import-plan-builder.js";
 
 export class MigrateService {
@@ -12,7 +12,7 @@ export class MigrateService {
 		this.objectTypeToSourceRecords = {};
 		this.sourceDataBase = new Database(getConnection(getArgs().sourceOrg));
 		this.targetDataBase = new Database(getConnection(getArgs().targetOrg));
-		this.recordFormatter = new RecordFormatter(this.sourceDataBase);
+		this.sobjectReferenceService = new SobjectReferenceService(this.sourceDataBase);
 	}
 
 	async migrateData(exportConfig) {
@@ -31,7 +31,7 @@ export class MigrateService {
 
 		console.log('🔄 Updating record references...');
 		for (const sObjectName in this.objectTypeToSourceRecords) {
-			const formattedRecords = await this.recordFormatter.formatForSyncReferences(
+			const formattedRecords = await this.sobjectReferenceService.formatForSyncReferences(
 				this.objectTypeToSourceRecords[sObjectName],
 				sObjectName,
 				referenceToRecordId
@@ -50,7 +50,7 @@ export class MigrateService {
 		this.objectTypeToSourceRecords[exportConfig.apiName] = structuredClone(records);
 
 		exportConfig = this._updateExportConfigRecordIds(exportConfig, records);
-		const formattedRecords = await this.recordFormatter.formatForImport(records, exportConfig.apiName);
+		const formattedRecords = await this.sobjectReferenceService.formatForImport(records, exportConfig.apiName);
 
 		this._writeRecordsToFile(exportConfig.apiName, {records: formattedRecords});
 		console.log(`\t✅ Retrieved ${records.length} ${exportConfig.apiName} record${records.length !== 1 ? 's' : ''}`);

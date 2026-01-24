@@ -1,4 +1,4 @@
-export class RecordFormatter {
+export class SobjectReferenceService {
 	constructor(database) {
 		this.database = database;
 		this.recordIdToReference = new Map();
