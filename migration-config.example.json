@@ -1,33 +1,40 @@
 {
-	"apiName": "Account",
-	"recordIds": [
-		"001XXXXXXXXXXXXXXX"
-	],
-	"referenceField": null,
-	"excludedFields": [],
-	"children": [{
-			"apiName": "Contact",
-			"referenceField": "AccountId"
-		},
-		{
-			"apiName": "Case",
-			"referenceField": "AccountId",
-			"excludedFields": []
-		},
-		{
-			"apiName": "Opportunity",
-			"referenceField": "AccountId",
-			"excludedFields": [],
-			"children": [{
-				"apiName": "OpportunityLineItem",
-				"referenceField": "OpportunityId",
+	"dependency": null,
+	"treeConfig": {
+		"apiName": "Account",
+		"externalIdField": "",
+		"recordIds": [ "001XXXXXXXXXXXXXXX" ],
+		"referenceField": null,
+		"excludedFields": [],
+		"children": [{
+				"apiName": "Contact",
+				"externalIdField": "",
+				"referenceField": "AccountId"
+			},
+			{
+				"apiName": "Case",
+				"externalIdField": "",
+				"referenceField": "AccountId",
 				"excludedFields": []
-			}]
-		},
-		{
-			"apiName": "Contract",
-			"referenceField": "AccountId",
-			"excludedFields": []
-		}
-	]
+			},
+			{
+				"apiName": "Opportunity",
+				"externalIdField": "",
+				"referenceField": "AccountId",
+				"excludedFields": [],
+				"children": [{
+					"apiName": "OpportunityLineItem",
+					"externalIdField": "",
+					"referenceField": "OpportunityId",
+					"excludedFields": []
+				}]
+			},
+			{
+				"apiName": "Contract",
+				"externalIdField": "",
+				"referenceField": "AccountId",
+				"excludedFields": []
+			}
+		]
+	}
 }

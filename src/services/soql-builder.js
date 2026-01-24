@@ -17,7 +17,8 @@ export class SoqlBuilder {
 		return `
 		SELECT ${fieldsStr}
 		FROM ${this.treeConfig.apiName}
-		WHERE ${this.treeConfig.referenceField || 'Id'} IN (${recordIdList})`;
+		WHERE ${this.treeConfig.referenceField || 'Id'} IN (${recordIdList})` + 
+		(this.treeConfig.externalIdField ? ` AND ${this.treeConfig.externalIdField} != NULL` : '');
 	}
 
 	async _getFields(sObjectApiName) {
