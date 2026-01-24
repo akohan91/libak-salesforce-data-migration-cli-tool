@@ -50,9 +50,11 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 
 🎪 **Selective Record Migration** - Migrate specific records by ID or entire related record sets
 
-⚡ **Built on Official Tools** - Leverages Salesforce CLI for authentication and JSForce for robust API interactions
+⚡ **Built on JSforce** - Uses JSforce database operations (insert, update, upsert) for direct API control
 
-🔍 **Detailed Error Reporting** - Get specific error messages with reference IDs, status codes, and affected fields
+🔄 **Upsert Support** - Configure external ID fields for idempotent migrations and incremental updates
+
+🔍 **Detailed Error Reporting** - Get specific error messages with reference IDs, status codes, and affected fields for all DML operations
 
 ---
 
@@ -93,18 +95,23 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 2. Edit `migration-config.json` to define your migration structure:
    ```json
    {
-     "apiName": "Account",
-     "recordIds": ["001XXXXXXXXXXXXXXX"],
-     "referenceField": null,
-     "excludedFields": [],
-     "children": [
-       {
-         "apiName": "Contact",
-         "referenceField": "AccountId",
-         "excludedFields": [],
-         "children": []
-       }
-     ]
+     "dependency": null,
+     "treeConfig": {
+       "apiName": "Account",
+       "externalIdField": "",
+       "recordIds": ["001XXXXXXXXXXXXXXX"],
+       "referenceField": null,
+       "excludedFields": [],
+       "children": [
+         {
+           "apiName": "Contact",
+           "externalIdField": "",
+           "referenceField": "AccountId",
+           "excludedFields": [],
+           "children": []
+         }
+       ]
+     }
    }
    ```
 
@@ -127,16 +134,14 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
        ✅ Configuration loaded: migration-config.json
 
    📥 Extracting data from source org...
-       ✅ Retrieved 1 Account record
-       ✅ Retrieved 3 Contact records
+       ✅ inserted 1 Account record
+       ✅ inserted 3 Contact records
 
-   📋 Building import plan...
-       ✅ Import plan created
 
-   📤 Importing records to target org...
-   ✅ Records imported successfully
 
    🔄 Updating record references...
+       ✅ updated 1 Account record
+       ✅ updated 3 Contact records
    ✅ Record references updated successfully
 
    ✅ Migration completed successfully!
@@ -150,46 +155,65 @@ The migration configuration file defines the structure of your data migration. H
 
 ```json
 {
-  "apiName": "Account",
-  "recordIds": ["001XXXXXXXXXXXXXXX"],
-  "referenceField": null,
-  "excludedFields": [],
-  "children": [
-    {
-      "apiName": "Contact",
-      "referenceField": "AccountId"
-    },
-    {
-      "apiName": "Case",
-      "referenceField": "AccountId",
-      "excludedFields": []
-    },
-    {
-      "apiName": "Opportunity",
-      "referenceField": "AccountId",
-      "excludedFields": [],
-      "children": [
-        {
-          "apiName": "OpportunityLineItem",
-          "referenceField": "OpportunityId",
-          "excludedFields": []
-        }
-      ]
-    },
-    {
-      "apiName": "Contract",
-      "referenceField": "AccountId",
-      "excludedFields": []
-    }
-  ]
+  "dependency": null,
+  "treeConfig": {
+    "apiName": "Account",
+    "externalIdField": "",
+    "recordIds": ["001XXXXXXXXXXXXXXX"],
+    "referenceField": null,
+    "excludedFields": [],
+    "children": [
+      {
+        "apiName": "Contact",
+        "externalIdField": "",
+        "referenceField": "AccountId"
+      },
+      {
+        "apiName": "Case",
+        "externalIdField": "",
+        "referenceField": "AccountId",
+        "excludedFields": []
+      },
+      {
+        "apiName": "Opportunity",
+        "externalIdField": "",
+        "referenceField": "AccountId",
+        "excludedFields": [],
+        "children": [
+          {
+            "apiName": "OpportunityLineItem",
+            "externalIdField": "",
+            "referenceField": "OpportunityId",
+            "excludedFields": []
+          }
+        ]
+      },
+      {
+        "apiName": "Contract",
+        "externalIdField": "",
+        "referenceField": "AccountId",
+        "excludedFields": []
+      }
+    ]
+  }
 }
 ```
 
 ### Configuration Properties
 
+#### Root Level Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `dependency` | any | No | Reserved for future use to support non-tree migration dependencies |
+| `treeConfig` | object | Yes | Configuration for hierarchical (tree-based) data migration |
+
+#### Tree Config Properties
+
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `apiName` | string | Yes | The API name of the Salesforce object (e.g., "Account", "Contact") |
+| `externalIdField` | string | No | External ID field name for upsert operations (leave empty for insert) |
 | `recordIds` | array | Yes* | Array of specific record IDs to migrate from the parent object |
 | `referenceField` | string/null | Yes | The lookup/master-detail field name that references the parent (null for root objects) |
 | `excludedFields` | array | No | Array of field API names to exclude from the migration (optional, defaults to empty) |
@@ -197,17 +221,20 @@ The migration configuration file defines the structure of your data migration. H
 
 <blockquote><b>NOTE:</b> For root objects (like Account), set <code>referenceField</code> to <code>null</code> and specify <code>recordIds</code>. For child objects, specify the field that references the parent (e.g., <code>"AccountId"</code> for Contact). Child records are automatically queried based on parent record IDs, so <code>recordIds</code> is not needed for children.</blockquote>
 
+<blockquote><b>UPSERT MODE:</b> When <code>externalIdField</code> is specified with a valid external ID field name, the tool will perform upsert operations instead of inserts. This enables idempotent migrations - running the same migration multiple times will update existing records instead of creating duplicates. Records without a value in the external ID field are automatically excluded from the migration.</blockquote>
+
 ---
 
 ## How It Works
 
-1. **Connection** - Authenticates to the source Salesforce org using credentials from Salesforce CLI
+1. **Connection** - Authenticates to source and target Salesforce orgs using credentials from Salesforce CLI
 2. **Query Building** - Dynamically builds SOQL queries based on object metadata and configuration
-3. **Data Export** - Retrieves records with all createable fields, respecting exclusions
-4. **Formatting** - Transforms records for import, replacing IDs with reference markers
-5. **Relationship Mapping** - Maintains parent-child relationships using reference IDs
-6. **Plan Generation** - Creates an import plan that ensures proper dependency order
-7. **Import** - Uses Salesforce CLI's tree import command to load data into target org
+3. **Hierarchical Processing** - Traverses the tree configuration from parent to children recursively
+4. **Data Export** - Retrieves records with all createable fields, respecting exclusions and external ID filters
+5. **Record Insertion** - Uses JSforce to insert or upsert records directly into the target org
+6. **Reference Tracking** - Maps source record IDs to target record IDs as records are created
+7. **Reference Resolution** - Updates lookup/master-detail fields in a second pass using the ID mapping
+8. **Error Handling** - Reports detailed errors for each failed record with status codes and field-level messages
 
 ---
 
