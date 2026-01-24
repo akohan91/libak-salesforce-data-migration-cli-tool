@@ -1,4 +1,4 @@
-import { formatUpdateErrors, displayUpdateResults } from "./salesforce-error-handler.js";
+import { formatDatabaseErrors, displayDatabaseResults } from "./salesforce-error-handler.js";
 
 export class Database {
 	
@@ -16,6 +16,20 @@ export class Database {
 		return result.records;
 	}
 
+	async insert(sObjectApiName, records) {
+		if (!this.connection) {
+			throw new Error('Not connected to Salesforce. Call connect() first.');
+		}
+
+		const rets = await this.connection
+			.sobject(sObjectApiName)
+			.create(records);
+		
+		const summary = formatDatabaseErrors(rets, sObjectApiName);
+		displayDatabaseResults('insert', summary, sObjectApiName);
+		return rets;
+	}
+
 	async update(sObjectApiName, records) {
 		if (!this.connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
@@ -25,16 +39,31 @@ export class Database {
 			.sobject(sObjectApiName)
 			.update(records);
 		
-		const summary = formatUpdateErrors(rets, sObjectApiName);
-		displayUpdateResults(summary, sObjectApiName);
+		const summary = formatDatabaseErrors(rets, sObjectApiName);
+		displayDatabaseResults('update', summary, sObjectApiName);
+		return rets;
+	}
+
+	async upsert(sObjectApiName, records, externalIdField, allOrNone = false) {
+		if (!this.connection) {
+			throw new Error('Not connected to Salesforce. Call connect() first.');
+		}
+
+		const rets = await this.connection
+			.sobject(sObjectApiName)
+			.upsert(records, externalIdField, { allOrNone });
+		
+		const summary = formatDatabaseErrors(rets, sObjectApiName);
+		displayDatabaseResults('upsert', summary, sObjectApiName);
+		return rets;
 	}
 
 	async sObjectDescribe(sObjectName) {
 		if (!this.connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
-		if (this._getExistingDescribe[sObjectName]) {
-			return this._getExistingDescribe[sObjectName];
+		if (this.sObjectNameToDescribe[sObjectName]) {
+			return this.sObjectNameToDescribe[sObjectName];
 		}
 		const response = await this.connection.request({
 			method: 'GET',
@@ -43,9 +72,5 @@ export class Database {
 		this.sObjectNameToDescribe[sObjectName] = response;
 
 		return response;
-	}
-
-	_getExistingDescribe(sObjectName) {
-		return this.sObjectNameToDescribe[sObjectName];
 	}
 }

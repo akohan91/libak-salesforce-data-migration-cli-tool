@@ -25,7 +25,10 @@ import { handleCliError, displayGenericError } from './services/salesforce-error
 			console.log('📁 Created output directory: _output\n');
 		}
 
-		await new MigrateService().migrateData(exportConfig);
+		await new MigrateService(
+			exportConfig.treeConfig,
+			exportConfig.nonTreeConfig
+		).migrateData();
 		console.log('\n✅ Migration completed successfully!\n');
 	} catch (error) {
 		const { handled } = handleCliError(error);

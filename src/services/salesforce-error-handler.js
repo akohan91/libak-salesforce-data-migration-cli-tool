@@ -22,7 +22,7 @@ const _parseCliError = (error) => {
 	}
 }
 
-export const displayUnifiedErrors = (unifiedError) => {
+const _displayUnifiedErrors = (unifiedError) => {
 	if (!unifiedError || !unifiedError.hasErrors) {
 		return;
 	}
@@ -57,7 +57,7 @@ export const handleCliError = (error) => {
 	const unifiedError = _parseCliError(error);
 
 	if (unifiedError) {
-		displayUnifiedErrors(unifiedError);
+		_displayUnifiedErrors(unifiedError);
 		return {
 			handled: true,
 			parsedError: unifiedError
@@ -70,7 +70,7 @@ export const handleCliError = (error) => {
 	};
 }
 
-export const formatUpdateErrors = (results) => {
+export const formatDatabaseErrors = (results) => {
 	const successCount = results.filter(ret => ret.success).length;
 	const errorCount = results.length - successCount;
 	
@@ -97,13 +97,13 @@ export const formatUpdateErrors = (results) => {
 	return summary;
 }
 
-export const displayUpdateResults = (summary, sObjectApiName) => {
+export const displayDatabaseResults = (actionName, summary, sObjectApiName) => {
 	if (summary.successCount > 0) {
-		console.log(`\t✅ Updated ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}`);
+		console.log(`\t✅ ${actionName}ed ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}`);
 	}
 	
 	if (summary.errorCount > 0) {
-		console.log(`\t⚠️  Failed to update ${summary.errorCount} ${sObjectApiName} record${summary.errorCount !== 1 ? 's' : ''}:`);
+		console.log(`\t⚠️  Failed to ${actionName} ${summary.errorCount} ${sObjectApiName} record${summary.errorCount !== 1 ? 's' : ''}:`);
 		
 		summary.errors.forEach(error => {
 			console.log(`\t   • ${error.message} (${error.statusCode})`);
