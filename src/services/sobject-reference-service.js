@@ -24,10 +24,34 @@ export class SobjectReferenceService {
 		});
 	}
 
-	addReferences(records, databaseResults) {
+	async addReferences(records, databaseResults, treeConfig, targetDatabase) {
+		const sourceRecordIdToTargetRecordId = new Map();
 		for (let i = 0; i < records.length; i++) {
 			this._sourceRecordIdToTargetRecordId.set(records[i].Id, databaseResults[i].id);
+			sourceRecordIdToTargetRecordId.set(records[i].Id, databaseResults[i].id);
 		}
+		if (!treeConfig.requiredReferences) {
+			return this._sourceRecordIdToTargetRecordId;
+		}
+		const soql = `
+			SELECT Id, ${treeConfig.requiredReferences.join(',')}
+			FROM ${treeConfig.apiName}
+			WHERE Id IN (${sourceRecordIdToTargetRecordId.values().map(id => `'${id}'`).toArray().join(',')})`;
+		
+		const recordIdToTargetRecord = (await targetDatabase.query(soql))
+			.reduce((recordIdToRecord, record) => {
+				recordIdToRecord[record.Id] = record;
+				return recordIdToRecord;
+			}, {});
+
+		records.forEach(record => {
+			const targetRecordId = sourceRecordIdToTargetRecordId.get(record.Id);
+			const targetRecord = recordIdToTargetRecord[targetRecordId];
+			treeConfig.requiredReferences.forEach(fieldName => {
+				this._sourceRecordIdToTargetRecordId.set(record[fieldName], targetRecord[fieldName]);
+			});
+		});
+
 		return this._sourceRecordIdToTargetRecordId;
 	}
 

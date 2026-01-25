@@ -34,7 +34,6 @@ export class MigrateService {
 			return;
 		}
 		const records = await this._sourceDataBase.query(soql);
-		this._objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records);
 
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
@@ -42,8 +41,12 @@ export class MigrateService {
 		const databaseResults = Boolean(treeConfig.externalIdField)
 			? await this._targetDataBase.upsert(treeConfig.apiName, cleanedRecords, treeConfig.externalIdField)
 			: await this._targetDataBase.insert(treeConfig.apiName, cleanedRecords);
-		this._sobjectReferenceService.addReferences(records, databaseResults);
-		
+		await this._sobjectReferenceService.addReferences( records, databaseResults, treeConfig, this._targetDataBase )
+		this._objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records.map(record => {
+			treeConfig.requiredReferences?.forEach(fieldName => delete record[fieldName]);
+			return record;
+		}));
+
 		if (!treeConfig.children?.length) {
 			return;
 		}
