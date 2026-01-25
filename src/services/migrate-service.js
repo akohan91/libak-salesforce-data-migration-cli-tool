@@ -4,9 +4,9 @@ import { Database } from "./database.js";
 import { SobjectReferenceService } from "./sobject-reference-service.js";
 
 export class MigrateService {
-	constructor(treeConfig, nonTreeConfig) {
+	constructor(treeConfig, dependencyConfig) {
 		this._treeConfig = structuredClone(treeConfig);
-		this._nonTreeConfig = structuredClone(nonTreeConfig);
+		this._dependencyConfig = structuredClone(dependencyConfig);
 		this._objectTypeToSourceRecords = {};
 		this._sourceDataBase = new Database(getConnection(getArgs().sourceOrg));
 		this._targetDataBase = new Database(getConnection(getArgs().targetOrg));

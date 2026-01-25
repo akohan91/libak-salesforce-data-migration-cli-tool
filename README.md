@@ -95,7 +95,7 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 2. Edit `migration-config.json` to define your migration structure:
    ```json
    {
-     "dependency": null,
+     "dependencyConfig": null,
      "treeConfig": {
        "apiName": "Account",
        "externalIdField": "",
@@ -155,7 +155,7 @@ The migration configuration file defines the structure of your data migration. H
 
 ```json
 {
-  "dependency": null,
+  "dependencyConfig": null,
   "treeConfig": {
     "apiName": "Account",
     "externalIdField": "",
@@ -205,7 +205,7 @@ The migration configuration file defines the structure of your data migration. H
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `dependency` | any | No | Reserved for future use to support non-tree migration dependencies |
+| `dependencyConfig` | any | No | Reserved for future use to support non-tree migration dependencies |
 | `treeConfig` | object | Yes | Configuration for hierarchical (tree-based) data migration |
 
 #### Tree Config Properties

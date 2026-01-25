@@ -22,7 +22,7 @@ import { handleCliError, displayGenericError } from './services/salesforce-error
 
 		await new MigrateService(
 			exportConfig.treeConfig,
-			exportConfig.nonTreeConfig
+			exportConfig.dependencyConfig
 		).migrateData();
 		console.log('\n✅ Migration completed successfully!\n');
 	} catch (error) {
