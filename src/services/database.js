@@ -3,25 +3,25 @@ import { formatDatabaseErrors, displayDatabaseResults } from "./salesforce-error
 export class Database {
 	
 	constructor(connection) {
-		this.connection = connection;
-		this.sObjectNameToDescribe = {};
+		this._connection = connection;
+		this._sObjectNameToDescribe = {};
 	}
 
 	async query(soql) {
-		if (!this.connection) {
+		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 
-		const result = await this.connection.query(soql);
+		const result = await this._connection.query(soql);
 		return result.records;
 	}
 
 	async insert(sObjectApiName, records) {
-		if (!this.connection) {
+		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 
-		const rets = await this.connection
+		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.create(records);
 		
@@ -31,11 +31,11 @@ export class Database {
 	}
 
 	async update(sObjectApiName, records) {
-		if (!this.connection) {
+		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 
-		const rets = await this.connection
+		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.update(records);
 		
@@ -45,11 +45,11 @@ export class Database {
 	}
 
 	async upsert(sObjectApiName, records, externalIdField, allOrNone = false) {
-		if (!this.connection) {
+		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 
-		const rets = await this.connection
+		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.upsert(records, externalIdField, { allOrNone });
 		
@@ -59,17 +59,17 @@ export class Database {
 	}
 
 	async sObjectDescribe(sObjectName) {
-		if (!this.connection) {
+		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
-		if (this.sObjectNameToDescribe[sObjectName]) {
-			return this.sObjectNameToDescribe[sObjectName];
+		if (this._sObjectNameToDescribe[sObjectName]) {
+			return this._sObjectNameToDescribe[sObjectName];
 		}
-		const response = await this.connection.request({
+		const response = await this._connection.request({
 			method: 'GET',
 			url: `/services/data/v62.0/sobjects/${sObjectName}/describe`
 		});
-		this.sObjectNameToDescribe[sObjectName] = response;
+		this._sObjectNameToDescribe[sObjectName] = response;
 
 		return response;
 	}

@@ -1,14 +1,18 @@
 export class SoqlBuilder {
 	constructor(database, treeConfig) {
-		this.database = database;
-		this.treeConfig = structuredClone(treeConfig);
+		this._database = database;
+		this._treeConfig = structuredClone(treeConfig);
 	}
 
 	async buildSOQL() {
-		const fieldsStr = (await this._getFields(this.treeConfig.apiName)).join(',');
-		const recordIdList = this.treeConfig.referenceField
-			? this.treeConfig?.parentRecordIds.map(id => `'${id}'`).join(',')
-			: this.treeConfig?.recordIds.map(id => `'${id}'`).join(',');
+		let fieldsList = [...(await this._getFields(this._treeConfig.apiName))];
+		if (this._treeConfig.requiredReferences) {
+			fieldsList = [...fieldsList, ...this._treeConfig.requiredReferences];
+		}
+		const fieldsStr = fieldsList.join(',');
+		const recordIdList = this._treeConfig.referenceField
+			? this._treeConfig?.parentRecordIds.map(id => `'${id}'`).join(',')
+			: this._treeConfig?.recordIds.map(id => `'${id}'`).join(',');
 		
 		if (!recordIdList?.length) {
 			return null;
@@ -16,20 +20,24 @@ export class SoqlBuilder {
 
 		return `
 		SELECT ${fieldsStr}
-		FROM ${this.treeConfig.apiName}
-		WHERE ${this.treeConfig.referenceField || 'Id'} IN (${recordIdList})` + 
-		(this.treeConfig.externalIdField ? ` AND ${this.treeConfig.externalIdField} != NULL` : '');
+		FROM ${this._treeConfig.apiName}
+		WHERE ${this._treeConfig.referenceField || 'Id'} IN (${recordIdList})` + 
+		(this._treeConfig.externalIdField ? ` AND ${this._treeConfig.externalIdField} != NULL` : '');
 	}
 
 	async _getFields(sObjectApiName) {
-		const sObjectMetadata = await this.database.sObjectDescribe(sObjectApiName);
+		const sObjectMetadata = await this._database.sObjectDescribe(sObjectApiName);
 		
 		return sObjectMetadata.fields
 			.filter(field => {
 				if (field.type === 'id') {
 					return true;
 				}
-				if (!field.createable || this.treeConfig.excludedFields?.includes(field.name)) {
+				if (
+					!field.updateable ||
+					!field.createable ||
+					this._treeConfig.excludedFields?.includes(field.name)
+				) {
 					return false;
 				}
 				return true;

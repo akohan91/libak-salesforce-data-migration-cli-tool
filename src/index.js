@@ -20,14 +20,9 @@ import { handleCliError, displayGenericError } from './services/salesforce-error
 		);
 		console.log(`\t✅ Configuration loaded: ${getArgs().exportConfig}\n`);
 
-		if (!existsSync('_output')) {
-			mkdirSync('_output', { recursive: true });
-			console.log('📁 Created output directory: _output\n');
-		}
-
 		await new MigrateService(
 			exportConfig.treeConfig,
-			exportConfig.nonTreeConfig
+			exportConfig.dependencyConfig
 		).migrateData();
 		console.log('\n✅ Migration completed successfully!\n');
 	} catch (error) {
