@@ -5,44 +5,44 @@ import { SobjectReferenceService } from "./sobject-reference-service.js";
 
 export class MigrateService {
 	constructor(treeConfig, nonTreeConfig) {
-		this.treeConfig = structuredClone(treeConfig);
-		this.nonTreeConfig = structuredClone(nonTreeConfig);
-		this.objectTypeToSourceRecords = {};
-		this.sourceDataBase = new Database(getConnection(getArgs().sourceOrg));
-		this.targetDataBase = new Database(getConnection(getArgs().targetOrg));
-		this.sobjectReferenceService = new SobjectReferenceService(this.sourceDataBase);
+		this._treeConfig = structuredClone(treeConfig);
+		this._nonTreeConfig = structuredClone(nonTreeConfig);
+		this._objectTypeToSourceRecords = {};
+		this._sourceDataBase = new Database(getConnection(getArgs().sourceOrg));
+		this._targetDataBase = new Database(getConnection(getArgs().targetOrg));
+		this._sobjectReferenceService = new SobjectReferenceService(this._sourceDataBase);
 	}
 
 	async migrateData() {
 		console.log('📥 Extracting data from source org...');
-		await this._migrateTree(this.treeConfig);
+		await this._migrateTree(this._treeConfig);
 		console.log('🔄 Updating record references...');
 
-		for (const sObjectName in this.objectTypeToSourceRecords) {
-			const formattedRecords = await this.sobjectReferenceService.assignReferences(
-				this.objectTypeToSourceRecords[sObjectName],
+		for (const sObjectName in this._objectTypeToSourceRecords) {
+			const formattedRecords = await this._sobjectReferenceService.assignReferences(
+				this._objectTypeToSourceRecords[sObjectName],
 				sObjectName
 			);
-			await this.targetDataBase.update(sObjectName, formattedRecords);
+			await this._targetDataBase.update(sObjectName, formattedRecords);
 		}
 		console.log('✅ Record references updated successfully');
 	}
 
 	async _migrateTree(treeConfig) {
-		const soql = await new SoqlBuilder(this.sourceDataBase, treeConfig).buildSOQL();
+		const soql = await new SoqlBuilder(this._sourceDataBase, treeConfig).buildSOQL();
 		if (!soql) {
 			return;
 		}
-		const records = await this.sourceDataBase.query(soql);
-		this.objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records);
+		const records = await this._sourceDataBase.query(soql);
+		this._objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records);
 
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
-		const cleanedRecords = await this.sobjectReferenceService.assignReferences(records, treeConfig.apiName);
+		const cleanedRecords = await this._sobjectReferenceService.assignReferences(records, treeConfig.apiName);
 		const databaseResults = Boolean(treeConfig.externalIdField)
-			? await this.targetDataBase.upsert(treeConfig.apiName, cleanedRecords, treeConfig.externalIdField)
-			: await this.targetDataBase.insert(treeConfig.apiName, cleanedRecords);
-		this.sobjectReferenceService.addReferences(records, databaseResults);
+			? await this._targetDataBase.upsert(treeConfig.apiName, cleanedRecords, treeConfig.externalIdField)
+			: await this._targetDataBase.insert(treeConfig.apiName, cleanedRecords);
+		this._sobjectReferenceService.addReferences(records, databaseResults);
 		
 		if (!treeConfig.children?.length) {
 			return;
