@@ -29,7 +29,11 @@ export class SoqlBuilder {
 				if (field.type === 'id') {
 					return true;
 				}
-				if (!field.createable || this._treeConfig.excludedFields?.includes(field.name)) {
+				if (
+					!field.updateable ||
+					!field.createable ||
+					this._treeConfig.excludedFields?.includes(field.name)
+				) {
 					return false;
 				}
 				return true;
