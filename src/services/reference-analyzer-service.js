@@ -14,7 +14,10 @@ export class ReferenceAnalyzerService {
 		console.log('📥 Analyzing references for provided treeConfig...');
 		await this._analyzeReferences(this._treeConfig);
 		console.log(this._sObjectFieldNameToMetadata);
-		console.log(new Set(this._sObjectFieldNameToMetadata.values()));
+		console.log((this._sObjectFieldNameToMetadata.values().reduce((result, set) => {
+			set.forEach(setItem => result.add(setItem));
+			return result;
+		},new Set())));
 		console.log('✅ Analyzing references completed successfully');
 	}
 
@@ -45,10 +48,11 @@ export class ReferenceAnalyzerService {
 					let referenceObject = fieldNameToMetadata[fieldName].referenceTo.length > 1
 						? await this._sourceDataBase.sObjectTypeById(record[fieldName])
 						: fieldNameToMetadata[fieldName].referenceTo[0];
-					this._sObjectFieldNameToMetadata.set(
-						`${treeConfig.apiName}.${fieldName}`,
-						referenceObject
-					);
+					const key = `${treeConfig.apiName}.${fieldName}`;
+					if (!this._sObjectFieldNameToMetadata.has(key)) {
+						this._sObjectFieldNameToMetadata.set(`${treeConfig.apiName}.${fieldName}`, new Set());
+					}
+					this._sObjectFieldNameToMetadata.get(key).add(referenceObject);
 				}
 			}
 		}
