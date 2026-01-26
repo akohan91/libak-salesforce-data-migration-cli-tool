@@ -3,6 +3,7 @@ import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { initArguments, connectToOrgs, getArgs } from './cli.js'
 import { MigrateService } from './services/migrate-service.js';
 import { handleCliError, displayGenericError } from './services/salesforce-error-handler.js';
+import { ReferenceAnalyzerService } from './services/reference-analyzer-service.js';
 
 (async () => {
 	try {
@@ -20,11 +21,17 @@ import { handleCliError, displayGenericError } from './services/salesforce-error
 		);
 		console.log(`\t✅ Configuration loaded: ${getArgs().exportConfig}\n`);
 
-		await new MigrateService(
-			exportConfig.treeConfig,
-			exportConfig.dependencyConfig
-		).migrateData();
-		console.log('\n✅ Migration completed successfully!\n');
+		if (getArgs().analyzeReferences) {
+			await new ReferenceAnalyzerService(
+				exportConfig.treeConfig
+			).analyzeReferences();
+		} else {
+			await new MigrateService(
+				exportConfig.treeConfig,
+				exportConfig.dependencyConfig
+			).migrateData();
+			console.log('\n✅ Migration completed successfully!\n');
+		}
 	} catch (error) {
 		const { handled } = handleCliError(error);
 		
@@ -33,6 +40,7 @@ import { handleCliError, displayGenericError } from './services/salesforce-error
 		} else {
 			displayGenericError(error);
 		}
+		getArgs().debug && console.log(error);
 		
 		process.exit(1);
 	}

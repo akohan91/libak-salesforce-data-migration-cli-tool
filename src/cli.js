@@ -10,6 +10,8 @@ export const initArguments = () => {
 		.option('-s, --source-org <name>', 'Organization from where the data comes.')
 		.option('-t, --target-org <name>', 'Organization to where the data comes.')
 		.option('-e, --export-config <name>', 'Path to the import configuration file')
+		.option('-a, --analyze-references', 'Runs the reference analyzer.')
+		.option('-d, --debug', 'Runs in the debug mode.')
 		.parse(process.argv);
 	_argNameToValue = program.opts();
 };
