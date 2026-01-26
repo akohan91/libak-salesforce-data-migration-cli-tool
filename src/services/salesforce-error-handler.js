@@ -72,10 +72,12 @@ export const handleCliError = (error) => {
 
 export const formatDatabaseErrors = (results) => {
 	const successCount = results.filter(ret => ret.success).length;
+	const successIds = results.map(ret => ret.id);
 	const errorCount = results.length - successCount;
 	
 	const summary = {
 		successCount,
+		successIds,
 		errorCount,
 		errors: []
 	};
@@ -99,7 +101,7 @@ export const formatDatabaseErrors = (results) => {
 
 export const displayDatabaseResults = (actionName, summary, sObjectApiName) => {
 	if (summary.successCount > 0) {
-		console.log(`\t✅ ${actionName}ed ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}`);
+		console.log(`\t✅ ${actionName}ed ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}: ${summary.successIds.join(', ')}`);
 	}
 	
 	if (summary.errorCount > 0) {
