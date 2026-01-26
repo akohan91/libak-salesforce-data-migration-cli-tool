@@ -19,7 +19,7 @@ export class ReferenceAnalyzerService {
 	}
 
 	async _analyzeReferences(treeConfig) {
-		const soql = await new SoqlBuilder(this._sourceDataBase, treeConfig).buildSOQL();
+		const soql = await new SoqlBuilder(this._sourceDataBase).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
 		}
@@ -41,16 +41,14 @@ export class ReferenceAnalyzerService {
 		for (let i = 0; i < records.length; i++) {
 			const record = records[i];
 			for (const fieldName in fieldNameToMetadata) {
-				if (fieldName !== 'RecordTypeId') {
-					if (record[fieldName]) {
-						let referenceObject = fieldNameToMetadata[fieldName].referenceTo.length > 1
-							? await this._sourceDataBase.sObjectTypeById(record[fieldName])
-							: fieldNameToMetadata[fieldName].referenceTo[0];
-						this._sObjectFieldNameToMetadata.set(
-							`${treeConfig.apiName}.${fieldName}`,
-							referenceObject
-						);
-					}
+				if (record[fieldName]) {
+					let referenceObject = fieldNameToMetadata[fieldName].referenceTo.length > 1
+						? await this._sourceDataBase.sObjectTypeById(record[fieldName])
+						: fieldNameToMetadata[fieldName].referenceTo[0];
+					this._sObjectFieldNameToMetadata.set(
+						`${treeConfig.apiName}.${fieldName}`,
+						referenceObject
+					);
 				}
 			}
 		}

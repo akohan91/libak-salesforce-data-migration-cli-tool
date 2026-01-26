@@ -1,3 +1,5 @@
+import { SoqlBuilder } from "./soql-builder.js";
+
 export class SobjectReferenceService {
 	constructor(database) {
 		this._database = database;
@@ -16,9 +18,7 @@ export class SobjectReferenceService {
 			delete record.attributes;
 			for (const fieldName in record) {
 				this._deleteNulls(record, fieldName);
-				if (fieldName !== 'RecordTypeId') {
-					this._assignReferences(record, fieldName);
-				}
+				this._assignReferences(record, fieldName);
 			}
 			return record;
 		});
@@ -33,16 +33,17 @@ export class SobjectReferenceService {
 		if (!treeConfig.requiredReferences) {
 			return this._sourceRecordIdToTargetRecordId;
 		}
-		const soql = `
-			SELECT Id, ${treeConfig.requiredReferences.join(',')}
-			FROM ${treeConfig.apiName}
-			WHERE Id IN (${sourceRecordIdToTargetRecordId.values().map(id => `'${id}'`).toArray().join(',')})`;
 		
-		const recordIdToTargetRecord = (await targetDatabase.query(soql))
-			.reduce((recordIdToRecord, record) => {
-				recordIdToRecord[record.Id] = record;
-				return recordIdToRecord;
-			}, {});
+		const recordIdToTargetRecord = (await targetDatabase.query(
+			new SoqlBuilder().buildSoql(
+				['Id', ...treeConfig.requiredReferences],
+				treeConfig.apiName,
+				sourceRecordIdToTargetRecordId.values().toArray()
+			)
+		)).reduce((recordIdToRecord, record) => {
+			recordIdToRecord[record.Id] = record;
+			return recordIdToRecord;
+		}, {});
 
 		records.forEach(record => {
 			const targetRecordId = sourceRecordIdToTargetRecordId.get(record.Id);
@@ -53,6 +54,55 @@ export class SobjectReferenceService {
 		});
 
 		return this._sourceRecordIdToTargetRecordId;
+	}
+
+	async addRecordTypeReferences(sourceDataBase, targetDataBase, treeConfig) {
+		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
+		const sourceRecordTypes = await sourceDataBase.query(`
+			SELECT Id, DeveloperName
+			FROM RecordType
+			WHERE SobjectType IN (${
+				sObjectTypes
+					.values()
+					.toArray()
+					.map(type => `'${type}'`)
+					.join(',')
+				})
+		`);
+		const devNameToTargetRtId = (await targetDataBase.query(`
+			SELECT Id, DeveloperName
+			FROM RecordType
+			WHERE SobjectType IN (${
+				sObjectTypes
+					.values()
+					.toArray()
+					.map(type => `'${type}'`)
+					.join(',')
+				})
+		`)).reduce((result, recordType) => {
+			result.set(recordType.DeveloperName, recordType.Id)
+			return result
+		}, new Map());
+		
+		sourceRecordTypes.forEach(sourceRecordType => {
+			this._sourceRecordIdToTargetRecordId.set(
+				sourceRecordType.Id,
+				devNameToTargetRtId.get(sourceRecordType.DeveloperName)
+			);
+		});
+	}
+
+	_extractAllSobjectTypes(treeConfig, sobjectTypes = new Set()) {
+		sobjectTypes.add(treeConfig.apiName);
+		
+		if (!treeConfig.children?.length) {
+			return sobjectTypes;
+		}
+		
+		for (let childConfig of treeConfig.children) {
+			sobjectTypes = this._extractAllSobjectTypes(childConfig, sobjectTypes);
+		}
+		return sobjectTypes;
 	}
 
 	_deleteNulls (record, fieldName) {

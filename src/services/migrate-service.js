@@ -14,10 +14,19 @@ export class MigrateService {
 	}
 
 	async migrateData() {
-		console.log('📥 Extracting data from source org...');
-		await this._migrateTree(this._treeConfig);
-		console.log('🔄 Updating record references...');
 
+		console.log('📥 Including Record Type references...');
+		await this._sobjectReferenceService.addRecordTypeReferences(
+			this._sourceDataBase,
+			this._targetDataBase,
+			this._treeConfig
+		);
+		console.log('\t✅ Record Type references included successfully\n');
+
+		console.log('📥 Migration data from source org...');
+		await this._migrateTree(this._treeConfig);
+		
+		console.log('🔄 Updating record references...');
 		for (const sObjectName in this._objectTypeToSourceRecords) {
 			const formattedRecords = await this._sobjectReferenceService.assignReferences(
 				this._objectTypeToSourceRecords[sObjectName],
@@ -25,15 +34,16 @@ export class MigrateService {
 			);
 			await this._targetDataBase.update(sObjectName, formattedRecords);
 		}
-		console.log('✅ Record references updated successfully');
 	}
 
 	async _migrateTree(treeConfig) {
-		const soql = await new SoqlBuilder(this._sourceDataBase, treeConfig).buildSOQL();
+		const soql = await new SoqlBuilder(this._sourceDataBase).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
 		}
 		const records = await this._sourceDataBase.query(soql);
+
+		!records?.length && console.log(`\t⚠️  no records found for ${treeConfig.apiName} Sobject.`);
 
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
