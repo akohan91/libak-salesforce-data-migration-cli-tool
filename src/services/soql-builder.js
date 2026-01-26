@@ -1,18 +1,17 @@
 export class SoqlBuilder {
-	constructor(database, treeConfig) {
+	constructor(database) {
 		this._database = database;
-		this._treeConfig = structuredClone(treeConfig);
 	}
 
-	async buildSOQL() {
-		let fieldsList = [...(await this._getFields(this._treeConfig.apiName))];
-		if (this._treeConfig.requiredReferences) {
-			fieldsList = [...fieldsList, ...this._treeConfig.requiredReferences];
+	async buildSoqlForConfig(treeConfig) {
+		let fieldsList = [...(await this._getAllFieldsForConfig(treeConfig))];
+		if (treeConfig.requiredReferences) {
+			fieldsList = [...fieldsList, ...treeConfig.requiredReferences];
 		}
 		const fieldsStr = fieldsList.join(',');
-		const recordIdList = this._treeConfig.referenceField
-			? this._treeConfig?.parentRecordIds.map(id => `'${id}'`).join(',')
-			: this._treeConfig?.recordIds.map(id => `'${id}'`).join(',');
+		const recordIdList = treeConfig.referenceField
+			? treeConfig?.parentRecordIds.map(id => `'${id}'`).join(',')
+			: treeConfig?.recordIds.map(id => `'${id}'`).join(',');
 		
 		if (!recordIdList?.length) {
 			return null;
@@ -20,13 +19,20 @@ export class SoqlBuilder {
 
 		return `
 		SELECT ${fieldsStr}
-		FROM ${this._treeConfig.apiName}
-		WHERE ${this._treeConfig.referenceField || 'Id'} IN (${recordIdList})` + 
-		(this._treeConfig.externalIdField ? ` AND ${this._treeConfig.externalIdField} != NULL` : '');
+		FROM ${treeConfig.apiName}
+		WHERE ${treeConfig.referenceField || 'Id'} IN (${recordIdList})` + 
+		(treeConfig.externalIdField ? ` AND ${treeConfig.externalIdField} != NULL` : '');
 	}
 
-	async _getFields(sObjectApiName) {
-		const sObjectMetadata = await this._database.sObjectDescribe(sObjectApiName);
+	buildSoql(fieldsToSelect, sobjectApiName, recordIds) {
+		return `
+			SELECT ${fieldsToSelect.join(',')}
+			FROM ${sobjectApiName}
+			WHERE Id IN (${recordIds.map(id => `'${id}'`).join(',')})`
+	}
+
+	async _getAllFieldsForConfig(treeConfig) {
+		const sObjectMetadata = await this._database.sObjectDescribe(treeConfig.apiName);
 		
 		return sObjectMetadata.fields
 			.filter(field => {
@@ -36,7 +42,7 @@ export class SoqlBuilder {
 				if (
 					!field.updateable ||
 					!field.createable ||
-					this._treeConfig.excludedFields?.includes(field.name)
+					treeConfig.excludedFields?.includes(field.name)
 				) {
 					return false;
 				}

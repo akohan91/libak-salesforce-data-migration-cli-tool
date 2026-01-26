@@ -5,6 +5,7 @@ export class Database {
 	constructor(connection) {
 		this._connection = connection;
 		this._sObjectNameToDescribe = {};
+		this._globalDescribe = null;
 	}
 
 	async query(soql) {
@@ -72,5 +73,19 @@ export class Database {
 		this._sObjectNameToDescribe[sObjectName] = response;
 
 		return response;
+	}
+
+	async sObjectTypeById(recordId) {
+		if (!this._globalDescribe) {
+			this._globalDescribe = await this._connection.describeGlobal();
+		}
+		const {sobjects} = this._globalDescribe;
+		const prefixMap = sobjects.reduce((map, obj) => {
+			if (obj.keyPrefix) {
+			map[obj.keyPrefix] = obj.name;
+			}
+			return map;
+		}, {});
+		return prefixMap[recordId.substring(0, 3)];
 	}
 }

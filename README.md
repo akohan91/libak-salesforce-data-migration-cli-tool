@@ -56,6 +56,10 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 
 🔍 **Detailed Error Reporting** - Get specific error messages with reference IDs, status codes, and affected fields for all DML operations
 
+🎭 **Automatic RecordType Mapping** - Intelligently maps RecordTypes between orgs using DeveloperName matching
+
+🔬 **Reference Analyzer** - Analyze your data structure to discover field-level relationships before migration
+
 ---
 
 ## Getting Started
@@ -122,6 +126,10 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
      --export-config migration-config.json
    ```
 
+   **Optional flags:**
+   - `--analyze-references` - Analyze reference fields without migrating data
+   - `--debug` - Display full error stack traces for troubleshooting
+
 4. Monitor the migration process:
    ```
    🚀 Salesforce Data Migration Tool
@@ -132,16 +140,16 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
    📄 Loading export configuration...
        ✅ Configuration loaded: migration-config.json
 
-   📥 Extracting data from source org...
-       ✅ inserted 1 Account record
-       ✅ inserted 3 Contact records
+   📥 Including Record Type references...
+       ✅ Record Type references included successfully
 
-
+   📥 Migration data from source org...
+       ✅ Inserted 1 Account records: 001xx000003DGbAAA1
+       ✅ Inserted 3 Contact records: 003xx000004DGbAAA1, 003xx000004DGbAAA2, 003xx000004DGbAAA3
 
    🔄 Updating record references...
-       ✅ updated 1 Account record
-       ✅ updated 3 Contact records
-   ✅ Record references updated successfully
+       ✅ Updated 1 Account records: 001xx000003DGbAAA1
+       ✅ Updated 3 Contact records: 003xx000004DGbAAA1, 003xx000004DGbAAA2, 003xx000004DGbAAA3
 
    ✅ Migration completed successfully!
    ```
@@ -227,16 +235,65 @@ The migration configuration file defines the structure of your data migration. H
 
 ---
 
+## CLI Commands
+
+### Standard Migration
+
+Migrate data from source to target org:
+
+```bash
+node src/index.js \
+  --source-org MySandbox \
+  --target-org MyDevOrg \
+  --export-config migration-config.json
+```
+
+### Reference Analyzer
+
+Analyze reference fields in your data structure without performing migration:
+
+```bash
+node src/index.js \
+  --source-org MySandbox \
+  --target-org MyDevOrg \
+  --export-config migration-config.json \
+  --analyze-references
+```
+
+The reference analyzer:
+- Scans all records in the source org specified in your configuration
+- Identifies populated reference fields across all objects
+- Resolves target SObject types for each reference field
+- Handles polymorphic lookups by detecting actual record types
+- Outputs a comprehensive map of field-level relationships
+
+This helps you understand your data structure and identify any missing relationships in your configuration.
+
+### Debug Mode
+
+Run migration with full error stack traces:
+
+```bash
+node src/index.js \
+  --source-org MySandbox \
+  --target-org MyDevOrg \
+  --export-config migration-config.json \
+  --debug
+```
+
+---
+
 ## How It Works
 
 1. **Connection** - Authenticates to source and target Salesforce orgs using credentials from Salesforce CLI
-2. **Query Building** - Dynamically builds SOQL queries based on object metadata and configuration
-3. **Hierarchical Processing** - Traverses the tree configuration from parent to children recursively
-4. **Data Export** - Retrieves records with all createable fields, respecting exclusions and external ID filters
-5. **Record Insertion** - Uses JSforce to insert or upsert records directly into the target org
-6. **Reference Tracking** - Maps source record IDs to target record IDs as records are created
-7. **Reference Resolution** - Updates lookup/master-detail fields in a second pass using the ID mapping
-8. **Error Handling** - Reports detailed errors for each failed record with status codes and field-level messages
+2. **RecordType Mapping** - Automatically maps RecordTypes between orgs using DeveloperName for org-independent matching
+3. **Query Building** - Dynamically builds SOQL queries based on object metadata and configuration
+4. **Hierarchical Processing** - Traverses the tree configuration from parent to children recursively
+5. **Data Export** - Retrieves records with all createable fields, respecting exclusions and external ID filters
+6. **Record Insertion** - Uses JSforce to insert or upsert records directly into the target org
+7. **Reference Tracking** - Maps source record IDs to target record IDs as records are created (including RecordTypes)
+8. **Reference Resolution** - Updates lookup/master-detail fields in a second pass using the ID mapping
+9. **Error Handling** - Reports detailed errors for each failed record with status codes and field-level messages
 
 ---
 
