@@ -1,9 +1,9 @@
-import { readFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync } from 'fs';
 
-import { initArguments, connectToOrgs, getArgs } from './cli.js'
-import { MigrateService } from './services/migrate-service.js';
-import { handleCliError, displayGenericError } from './services/salesforce-error-handler.js';
-import { ReferenceAnalyzerService } from './services/reference-analyzer-service.js';
+import { initArguments, connectToOrgs, getArgs } from './cli.ts'
+import { MigrateService } from './services/migrate-service.ts';
+import { handleCliError } from './services/salesforce-error-handler.ts';
+import { ReferenceAnalyzerService } from './services/reference-analyzer-service.ts';
 
 
 try {
@@ -29,14 +29,6 @@ try {
 			.migrateData();
 	}
 } catch (error) {
-	const { handled } = handleCliError(error);
-	
-	if (handled) {
-		console.error('\n❌ Migration failed (see details above)\n');
-	} else {
-		displayGenericError(error);
-	}
-	getArgs().debug && console.log(error);
-	
+	handleCliError(error);
 	process.exit(1);
 }

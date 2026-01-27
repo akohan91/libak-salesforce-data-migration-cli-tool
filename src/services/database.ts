@@ -1,14 +1,20 @@
-import { formatDatabaseErrors, displayDatabaseResults } from "./salesforce-error-handler.js";
+import type jsforce from "jsforce";
+import { formatDatabaseErrors, displayDatabaseResults } from "./salesforce-error-handler.ts";
+import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResult } from "jsforce";
 
 export class Database {
 	
-	constructor(connection) {
+	_connection: Connection;
+	_sObjectNameToDescribe: any;
+	_globalDescribe: DescribeGlobalResult | null;
+
+	constructor(connection: Connection) {
 		this._connection = connection;
 		this._sObjectNameToDescribe = {};
 		this._globalDescribe = null;
 	}
 
-	async query(soql) {
+	async query(soql: string): Promise<any[]> {
 		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
@@ -17,7 +23,7 @@ export class Database {
 		return result.records;
 	}
 
-	async insert(sObjectApiName, records) {
+	async insert(sObjectApiName: string, records: any[]): Promise<SaveResult[]> {
 		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
@@ -26,12 +32,12 @@ export class Database {
 			.sobject(sObjectApiName)
 			.create(records);
 		
-		const summary = formatDatabaseErrors(rets, sObjectApiName);
+		const summary = formatDatabaseErrors(rets);
 		displayDatabaseResults('insert', summary, sObjectApiName);
 		return rets;
 	}
 
-	async update(sObjectApiName, records) {
+	async update(sObjectApiName: string, records: any[]): Promise<SaveResult[]> {
 		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
@@ -40,12 +46,17 @@ export class Database {
 			.sobject(sObjectApiName)
 			.update(records);
 		
-		const summary = formatDatabaseErrors(rets, sObjectApiName);
+		const summary = formatDatabaseErrors(rets);
 		displayDatabaseResults('update', summary, sObjectApiName);
 		return rets;
 	}
 
-	async upsert(sObjectApiName, records, externalIdField, allOrNone = false) {
+	async upsert(
+		sObjectApiName: string,
+		records: any[],
+		externalIdField: string,
+		allOrNone: boolean = false
+	): Promise<SaveResult[]> {
 		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
@@ -54,19 +65,19 @@ export class Database {
 			.sobject(sObjectApiName)
 			.upsert(records, externalIdField, { allOrNone });
 		
-		const summary = formatDatabaseErrors(rets, sObjectApiName);
+		const summary = formatDatabaseErrors(rets);
 		displayDatabaseResults('upsert', summary, sObjectApiName);
 		return rets;
 	}
 
-	async sObjectDescribe(sObjectName) {
+	async sObjectDescribe(sObjectName: string): Promise<DescribeSObjectResult> {
 		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
 		}
 		if (this._sObjectNameToDescribe[sObjectName]) {
 			return this._sObjectNameToDescribe[sObjectName];
 		}
-		const response = await this._connection.request({
+		const response = await this._connection.request<DescribeSObjectResult>({
 			method: 'GET',
 			url: `/services/data/v62.0/sobjects/${sObjectName}/describe`
 		});
@@ -75,17 +86,17 @@ export class Database {
 		return response;
 	}
 
-	async sObjectTypeById(recordId) {
+	async sObjectTypeById(recordId: string): Promise<string> {
 		if (!this._globalDescribe) {
 			this._globalDescribe = await this._connection.describeGlobal();
 		}
 		const {sobjects} = this._globalDescribe;
-		const prefixMap = sobjects.reduce((map, obj) => {
-			if (obj.keyPrefix) {
-			map[obj.keyPrefix] = obj.name;
+		const prefixMap = sobjects.reduce((map, objDescribe) => {
+			if (objDescribe.keyPrefix) {
+				map.set(objDescribe.keyPrefix, objDescribe.name);
 			}
 			return map;
-		}, {});
-		return prefixMap[recordId.substring(0, 3)];
+		}, new Map());
+		return prefixMap.get(recordId.substring(0, 3));
 	}
 }

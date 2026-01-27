@@ -1,16 +1,23 @@
-import { SoqlBuilder } from "./soql-builder.js";
-import { getSourceDb, getTargetDb } from '../cli.js'
-import { SobjectReferenceService } from "./sobject-reference-service.js";
+import { SoqlBuilder } from "./soql-builder.ts";
+import { getSourceDb, getTargetDb } from '../cli.ts'
+import { SobjectReferenceService } from "./sobject-reference-service.ts";
+import type { TreeConfig } from "../types/types.ts";
 
 export class MigrateService {
-	constructor(treeConfig, dependencyConfig) {
-		this._treeConfig = structuredClone(treeConfig);
-		this._dependencyConfig = structuredClone(dependencyConfig);
+
+	_treeConfig: TreeConfig;
+	_dependencyConfig: TreeConfig[];
+	_objectTypeToSourceRecords: {[key: string]: any[]};
+	_sobjectReferenceService: SobjectReferenceService;
+
+	constructor(treeConfig: TreeConfig, dependencyConfig: TreeConfig[]) {
+		this._treeConfig = treeConfig;
+		this._dependencyConfig = dependencyConfig;
 		this._objectTypeToSourceRecords = {};
 		this._sobjectReferenceService = new SobjectReferenceService();
 	}
 
-	async migrateData() {
+	async migrateData(): Promise<void> {
 		await this._migrateDependencies();
 		await this._syncRecordTypeReferences(this._treeConfig);
 		
@@ -19,10 +26,9 @@ export class MigrateService {
 		console.log('✅ Migration main tree completed...\n');
 		
 		await this._updateRecordsWithReferences();
-		
 	}
 
-	async _migrateDependencies() {
+	async _migrateDependencies(): Promise<void> {
 		console.log('🔄 Migration dependencies...');
 		if (!this._dependencyConfig) {
 			return;
@@ -34,7 +40,7 @@ export class MigrateService {
 		console.log('✅ Migration dependencies completed...\n');
 	}
 
-	async _migrateTree(treeConfig) {
+	async _migrateTree(treeConfig: TreeConfig): Promise<void> {
 		const soql = await new SoqlBuilder(getSourceDb()).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
@@ -46,45 +52,48 @@ export class MigrateService {
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
 		const recordsToInsert = await this._sobjectReferenceService.assignReferences(records, treeConfig.apiName);
-		const dbResults = Boolean(treeConfig.externalIdField)
+		
+		const dbResults = treeConfig.externalIdField != null
 			? await getTargetDb().upsert(treeConfig.apiName, recordsToInsert, treeConfig.externalIdField)
 			: await getTargetDb().insert(treeConfig.apiName, recordsToInsert);
 		await this._sobjectReferenceService.addReferencesFromDbResults(records, dbResults, treeConfig)
-		this._objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records.map(record => {
+		this._objectTypeToSourceRecords[treeConfig.apiName] = records.map(record => {
 			treeConfig.requiredReferences?.forEach(fieldName => delete record[fieldName]);
 			return record;
-		}));
+		});
 
 		if (!treeConfig.children?.length) {
 			return;
 		}
 		for (let childConfig of treeConfig.children) {
-			childConfig = structuredClone(childConfig);
+			childConfig = childConfig;
 			childConfig.parentRecordIds = treeConfig?.recordIds || [];
 			await this._migrateTree(childConfig);
 		}
 	}
 
-	_addTreeConfigRecordIds(treeConfig, records) {
-		treeConfig = structuredClone(treeConfig);
+	_addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig {
+		treeConfig = treeConfig;
 		treeConfig.recordIds = records.map(record => record.Id);
 		return treeConfig;
 	}
 
-	async _syncRecordTypeReferences(config) {
+	async _syncRecordTypeReferences(config: TreeConfig): Promise<void>  {
 		console.log('📥 Including Record Type references...');
 		await this._sobjectReferenceService.addRecordTypeReferences(config);
 		console.log('\t✅ Record Type references included successfully\n');
 	}
 
-	async _updateRecordsWithReferences() {
+	async _updateRecordsWithReferences(): Promise<void>  {
 		console.log('🔄 Updating record references...');
 		for (const sObjectName in this._objectTypeToSourceRecords) {
-			const recordsToUpdate = await this._sobjectReferenceService.assignReferences(
-				this._objectTypeToSourceRecords[sObjectName],
-				sObjectName
-			);
-			await getTargetDb().update(sObjectName, recordsToUpdate);
+			if (this._objectTypeToSourceRecords[sObjectName]) {
+				const recordsToUpdate = await this._sobjectReferenceService.assignReferences(
+					this._objectTypeToSourceRecords[sObjectName],
+					sObjectName
+				);
+				await getTargetDb().update(sObjectName, recordsToUpdate);
+			}
 		}
 		console.log('✅ Updating record references completed...');
 	}

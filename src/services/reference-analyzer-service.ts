@@ -1,36 +1,36 @@
-import { getSourceDb } from "../cli.js";
-import { SoqlBuilder } from "./soql-builder.js";
+import type { Field } from "jsforce";
+import { getSourceDb } from "../cli.ts";
+import type { TreeConfig } from "../types/types.ts";
+import { SoqlBuilder } from "./soql-builder.ts";
 
 export class ReferenceAnalyzerService {
-	constructor(treeConfig) {
-		this._treeConfig = structuredClone(treeConfig);
+	
+	_treeConfig: TreeConfig;
+	_objectTypeToSourceRecords: {[key: string]: any[]};
+	_sObjectFieldNameToSobjects;
+	_sObjectNameToConfig;
+	
+	constructor(treeConfig: TreeConfig) {
+		this._treeConfig = treeConfig;
 		this._objectTypeToSourceRecords = {};
 		this._sObjectFieldNameToSobjects = new Map();
 		this._sObjectNameToConfig = new Map();
 	}
 
-	async analyzeReferences() {
+	async analyzeReferences(): Promise<void>  {
 		console.log('📥 Analyzing references for provided treeConfig...');
 		await this._analyzeReferences(this._treeConfig);
 		console.log(this._sObjectFieldNameToSobjects);
-		console.log((this._sObjectFieldNameToSobjects.values().reduce((result, set) => {
-			set.forEach(setItem => result.add(setItem));
-			return result;
-		},new Set())));
 		console.log(
 			JSON.stringify(
-				this._sObjectNameToConfig
-				.values()
-				.toArray()
-				.map(config => ({...config, recordIds: config.recordIds.values().toArray()})),
-				null,
-				4
+				[...this._sObjectNameToConfig.values()]
+				.map(config => ({...config, recordIds: [...config.recordIds.values()]}))
 			)
 		);
 		console.log('✅ Analyzing references completed successfully');
 	}
 
-	async _analyzeReferences(treeConfig) {
+	async _analyzeReferences(treeConfig: TreeConfig): Promise<void>  {
 		const soql = await new SoqlBuilder(getSourceDb()).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
@@ -38,13 +38,11 @@ export class ReferenceAnalyzerService {
 		const records = await getSourceDb().query(soql);
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
-		const fieldNameToMetadata = (await getSourceDb()
-			.sObjectDescribe(treeConfig.apiName)).fields
-			.reduce((fieldNameToMetadata, field) => {
+		const fields: Field[] = (await getSourceDb().sObjectDescribe(treeConfig.apiName)).fields;
+		const fieldNameToMetadata = fields
+			.reduce((fieldNameToMetadata: {[key:string]: Field}, field) => {
 				if (field.type === 'reference') {
-					fieldNameToMetadata[field.name] = {
-						referenceTo: field.referenceTo
-					};
+					fieldNameToMetadata[field.name] = field;
 				}
 				return fieldNameToMetadata;
 			}, {});
@@ -64,18 +62,30 @@ export class ReferenceAnalyzerService {
 		}
 	}
 
-	_addTreeConfigRecordIds(treeConfig, records) {
-		treeConfig = structuredClone(treeConfig);
+	_addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig  {
+		treeConfig = treeConfig;
 		treeConfig.recordIds = records.map(record => record.Id);
 		return treeConfig;
 	}
 
-	async _addRelationsToMap(record, fieldNameToMetadata, treeConfig) {
+	async _addRelationsToMap(
+		record: any,
+		fieldNameToMetadata: {[key: string]: Field},
+		treeConfig: TreeConfig
+	): Promise<void> {
 		for (const fieldName in fieldNameToMetadata) {
 			if (record[fieldName]) {
-				let referenceObject = fieldNameToMetadata[fieldName].referenceTo.length > 1
+				const referenceTo = fieldNameToMetadata[fieldName]?.referenceTo;
+				if (!referenceTo || referenceTo.length === 0) {
+					continue;
+				}
+				const referenceObject = referenceTo.length > 1
 					? await getSourceDb().sObjectTypeById(record[fieldName])
-					: fieldNameToMetadata[fieldName].referenceTo[0];
+					: referenceTo[0];
+				
+				if (!referenceObject) {
+					continue;
+				}
 				const key = `${treeConfig.apiName}.${fieldName}`;
 				if (!this._sObjectFieldNameToSobjects.has(key)) {
 					this._sObjectFieldNameToSobjects.set(key, new Set());

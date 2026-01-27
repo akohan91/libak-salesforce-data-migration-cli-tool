@@ -4,6 +4,9 @@
   "description": "A CLI tool to replicate data from one Salesforce org to another",
   "main": "src/index.js",
   "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts"
+  },
   "keywords": [
     "salesforce",
     "data-migration",
@@ -21,5 +24,10 @@
     "jsforce": "^3.3.0"
   },
   "devDependencies": {
+    "@types/commander": "^2.12.0",
+    "@types/jsforce": "^1.11.6",
+    "@types/node": "^25.0.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
