@@ -99,7 +99,7 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 2. Edit `migration-config.json` to define your migration structure:
    ```json
    {
-     "dependencyConfig": null,
+     "dependencyConfig": [],
      "treeConfig": {
        "apiName": "Account",
        "externalIdField": "BackendId__c",
@@ -162,7 +162,7 @@ The migration configuration file defines the structure of your data migration. H
 
 ```json
 {
-  "dependencyConfig": null,
+  "dependencyConfig": [],
   "treeConfig": {
     "apiName": "Account",
     "externalIdField": "",
@@ -212,15 +212,15 @@ The migration configuration file defines the structure of your data migration. H
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `dependencyConfig` | any | No | Reserved for future use to support non-tree migration dependencies |
-| `treeConfig` | object | Yes | Configuration for hierarchical (tree-based) data migration |
+| `dependencyConfig` | array | No | Array of tree configurations for prerequisite objects that must be migrated before the main tree (e.g., Products for PricebookEntries) |
+| `treeConfig` | object | Yes | Configuration for the main hierarchical (tree-based) data migration |
 
 #### Tree Config Properties
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `apiName` | string | Yes | The API name of the Salesforce object (e.g., "Account", "Contact") |
-| `externalIdField` | string | No | External ID field name for upsert operations (leave empty for insert) |
+| `externalIdField` | string/array | No | External ID field name(s) for upsert operations. Can be a string for single field or array for multiple fields (e.g., `["Field1__c", "Field2__c"]`). Leave empty for insert. |
 | `recordIds` | array | Yes* | Array of specific record IDs to migrate from the parent object |
 | `referenceField` | string/null | Yes | The lookup/master-detail field name that references the parent (null for root objects) |
 | `excludedFields` | array | No | Array of field API names to exclude from the migration (optional, defaults to empty) |
@@ -263,11 +263,20 @@ node src/index.js \
 The reference analyzer:
 - Scans all records in the source org specified in your configuration
 - Identifies populated reference fields across all objects
-- Resolves target SObject types for each reference field
-- Handles polymorphic lookups by detecting actual record types
-- Outputs a comprehensive map of field-level relationships
+- Resolves target SObject types for each reference field (handles polymorphic lookups)
+- Automatically detects external ID fields for each referenced object
+- Collects all referenced record IDs per object type
+- **Generates ready-to-use dependency configurations** in formatted JSON
 
-This helps you understand your data structure and identify any missing relationships in your configuration.
+**Output includes:**
+1. Field-to-SObject relationship map (e.g., `Account.OwnerId` → `User`)
+2. Unique set of all referenced SObject types
+3. Complete dependency configuration JSON with:
+   - SObject API names
+   - Detected external ID fields
+   - All referenced record IDs
+
+This helps you understand your data structure and automatically generates the `dependencyConfig` array for complex migrations.
 
 ### Debug Mode
 
@@ -286,14 +295,15 @@ node src/index.js \
 ## How It Works
 
 1. **Connection** - Authenticates to source and target Salesforce orgs using credentials from Salesforce CLI
-2. **RecordType Mapping** - Automatically maps RecordTypes between orgs using DeveloperName for org-independent matching
-3. **Query Building** - Dynamically builds SOQL queries based on object metadata and configuration
-4. **Hierarchical Processing** - Traverses the tree configuration from parent to children recursively
-5. **Data Export** - Retrieves records with all createable fields, respecting exclusions and external ID filters
-6. **Record Insertion** - Uses JSforce to insert or upsert records directly into the target org
-7. **Reference Tracking** - Maps source record IDs to target record IDs as records are created (including RecordTypes)
-8. **Reference Resolution** - Updates lookup/master-detail fields in a second pass using the ID mapping
-9. **Error Handling** - Reports detailed errors for each failed record with status codes and field-level messages
+2. **Dependency Migration** - Processes `dependencyConfig` array first, migrating prerequisite objects in specified order
+3. **RecordType Mapping** - Automatically maps RecordTypes between orgs using DeveloperName for org-independent matching (per configuration)
+4. **Query Building** - Dynamically builds SOQL queries based on object metadata and configuration
+5. **Hierarchical Processing** - Traverses the tree configuration from parent to children recursively
+6. **Data Export** - Retrieves records with all createable fields, respecting exclusions and external ID filters
+7. **Record Insertion** - Uses JSforce to insert or upsert records directly into the target org
+8. **Reference Tracking** - Maps source record IDs to target record IDs as records are created (including RecordTypes)
+9. **Reference Resolution** - Updates lookup/master-detail fields in a second pass using the ID mapping
+10. **Error Handling** - Reports detailed errors for each failed record with status codes and field-level messages
 
 ---
 

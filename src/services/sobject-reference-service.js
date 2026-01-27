@@ -1,15 +1,15 @@
+import { getSourceDb, getTargetDb } from "../cli.js";
 import { SoqlBuilder } from "./soql-builder.js";
 
 export class SobjectReferenceService {
-	constructor(database) {
-		this._database = database;
+	constructor() {
 		this._referenceFields = [];
 		this._sourceRecordIdToTargetRecordId = new Map();
 	}
 
 	async assignReferences(records, sObjectApiName) {
 		records = structuredClone(records);
-		this.sObjectMetadata = await this._database
+		this.sObjectMetadata = await getSourceDb()
 			.sObjectDescribe(sObjectApiName);
 		this._referenceFields = this.sObjectMetadata.fields
 			.map(field => (field.type === 'reference' || field.name === 'Id') && field.name);
@@ -24,18 +24,18 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addReferences(records, databaseResults, treeConfig, targetDatabase) {
+	async addReferencesFromDbResults(sourceRecords, targetDbResults, treeConfig) {
 		const sourceRecordIdToTargetRecordId = new Map();
-		for (let i = 0; i < records.length; i++) {
-			this._sourceRecordIdToTargetRecordId.set(records[i].Id, databaseResults[i].id);
-			sourceRecordIdToTargetRecordId.set(records[i].Id, databaseResults[i].id);
+		for (let i = 0; i < sourceRecords.length; i++) {
+			this._sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
+			sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
 		}
 		if (!treeConfig.requiredReferences) {
 			return this._sourceRecordIdToTargetRecordId;
 		}
 		
-		const recordIdToTargetRecord = (await targetDatabase.query(
-			new SoqlBuilder().buildSoql(
+		const recordIdToTargetRecord = (await getTargetDb().query(
+			new SoqlBuilder().buildSoqlByIds(
 				['Id', ...treeConfig.requiredReferences],
 				treeConfig.apiName,
 				sourceRecordIdToTargetRecordId.values().toArray()
@@ -45,45 +45,29 @@ export class SobjectReferenceService {
 			return recordIdToRecord;
 		}, {});
 
-		records.forEach(record => {
+		sourceRecords.forEach(record => {
 			const targetRecordId = sourceRecordIdToTargetRecordId.get(record.Id);
 			const targetRecord = recordIdToTargetRecord[targetRecordId];
 			treeConfig.requiredReferences.forEach(fieldName => {
 				this._sourceRecordIdToTargetRecordId.set(record[fieldName], targetRecord[fieldName]);
 			});
 		});
-
-		return this._sourceRecordIdToTargetRecordId;
 	}
 
-	async addRecordTypeReferences(sourceDataBase, targetDataBase, treeConfig) {
+	async addRecordTypeReferences(treeConfig) {
 		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
-		const sourceRecordTypes = await sourceDataBase.query(`
-			SELECT Id, DeveloperName
-			FROM RecordType
-			WHERE SobjectType IN (${
-				sObjectTypes
-					.values()
-					.toArray()
-					.map(type => `'${type}'`)
-					.join(',')
-				})
-		`);
-		const devNameToTargetRtId = (await targetDataBase.query(`
-			SELECT Id, DeveloperName
-			FROM RecordType
-			WHERE SobjectType IN (${
-				sObjectTypes
-					.values()
-					.toArray()
-					.map(type => `'${type}'`)
-					.join(',')
-				})
-		`)).reduce((result, recordType) => {
-			result.set(recordType.DeveloperName, recordType.Id)
-			return result
-		}, new Map());
-		
+		const recordTypeSoql = new SoqlBuilder().buildSoqlByFieldValues(
+			['Id', 'DeveloperName'],
+			'RecordType',
+			'SobjectType',
+			sObjectTypes.values().toArray()
+		);
+		const sourceRecordTypes = await getSourceDb().query(recordTypeSoql);
+		const devNameToTargetRtId = (await getTargetDb().query(recordTypeSoql))
+			.reduce((result, recordType) => {
+				result.set(recordType.DeveloperName, recordType.Id)
+				return result
+			}, new Map());
 		sourceRecordTypes.forEach(sourceRecordType => {
 			this._sourceRecordIdToTargetRecordId.set(
 				sourceRecordType.Id,
