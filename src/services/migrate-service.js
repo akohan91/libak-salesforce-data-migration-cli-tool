@@ -48,11 +48,11 @@ export class MigrateService {
 
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
-		const cleanedRecords = await this._sobjectReferenceService.assignReferences(records, treeConfig.apiName);
-		const databaseResults = Boolean(treeConfig.externalIdField)
-			? await this._targetDataBase.upsert(treeConfig.apiName, cleanedRecords, treeConfig.externalIdField)
-			: await this._targetDataBase.insert(treeConfig.apiName, cleanedRecords);
-		await this._sobjectReferenceService.addReferences( records, databaseResults, treeConfig, this._targetDataBase )
+		const recordsToInsert = await this._sobjectReferenceService.assignReferences(records, treeConfig.apiName);
+		const dbResults = Boolean(treeConfig.externalIdField)
+			? await this._targetDataBase.upsert(treeConfig.apiName, recordsToInsert, treeConfig.externalIdField)
+			: await this._targetDataBase.insert(treeConfig.apiName, recordsToInsert);
+		await this._sobjectReferenceService.addReferencesFromDbResults(records, dbResults, treeConfig, this._targetDataBase )
 		this._objectTypeToSourceRecords[treeConfig.apiName] = structuredClone(records.map(record => {
 			treeConfig.requiredReferences?.forEach(fieldName => delete record[fieldName]);
 			return record;

@@ -24,11 +24,11 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addReferences(records, databaseResults, treeConfig, targetDatabase) {
+	async addReferencesFromDbResults(sourceRecords, targetDbResults, treeConfig, targetDatabase) {
 		const sourceRecordIdToTargetRecordId = new Map();
-		for (let i = 0; i < records.length; i++) {
-			this._sourceRecordIdToTargetRecordId.set(records[i].Id, databaseResults[i].id);
-			sourceRecordIdToTargetRecordId.set(records[i].Id, databaseResults[i].id);
+		for (let i = 0; i < sourceRecords.length; i++) {
+			this._sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
+			sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
 		}
 		if (!treeConfig.requiredReferences) {
 			return this._sourceRecordIdToTargetRecordId;
@@ -45,15 +45,13 @@ export class SobjectReferenceService {
 			return recordIdToRecord;
 		}, {});
 
-		records.forEach(record => {
+		sourceRecords.forEach(record => {
 			const targetRecordId = sourceRecordIdToTargetRecordId.get(record.Id);
 			const targetRecord = recordIdToTargetRecord[targetRecordId];
 			treeConfig.requiredReferences.forEach(fieldName => {
 				this._sourceRecordIdToTargetRecordId.set(record[fieldName], targetRecord[fieldName]);
 			});
 		});
-
-		return this._sourceRecordIdToTargetRecordId;
 	}
 
 	async addRecordTypeReferences(sourceDataBase, targetDataBase, treeConfig) {
