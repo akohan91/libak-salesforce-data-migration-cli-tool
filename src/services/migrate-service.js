@@ -14,39 +14,27 @@ export class MigrateService {
 	}
 
 	async migrateData() {
+		await this._migrateDependencies();
+		await this._syncRecordTypeReferences(this._treeConfig);
+		
+		console.log('🔄 Migration main tree...');
+		await this._migrateTree(this._treeConfig);
+		console.log('✅ Migration main tree completed...\n');
+		
+		await this._updateRecordsWithReferences();
+		
+	}
 
+	async _migrateDependencies() {
+		console.log('🔄 Migration dependencies...');
+		if (!this._dependencyConfig) {
+			return;
+		}
 		for (const config of this._dependencyConfig) {
-			console.log('📥 Including Record Type references...');
-			await this._sobjectReferenceService.addRecordTypeReferences(
-				this._sourceDataBase,
-				this._targetDataBase,
-				config
-			);
-			console.log('\t✅ Record Type references included successfully\n');
-
-			console.log('📥 Migration data from source org...');
+			await this._syncRecordTypeReferences(config);
 			await this._migrateTree(config);
 		}
-
-		console.log('📥 Including Record Type references...');
-		await this._sobjectReferenceService.addRecordTypeReferences(
-			this._sourceDataBase,
-			this._targetDataBase,
-			this._treeConfig
-		);
-		console.log('\t✅ Record Type references included successfully\n');
-
-		console.log('📥 Migration data from source org...');
-		await this._migrateTree(this._treeConfig);
-		
-		console.log('🔄 Updating record references...');
-		for (const sObjectName in this._objectTypeToSourceRecords) {
-			const formattedRecords = await this._sobjectReferenceService.assignReferences(
-				this._objectTypeToSourceRecords[sObjectName],
-				sObjectName
-			);
-			await this._targetDataBase.update(sObjectName, formattedRecords);
-		}
+		console.log('✅ Migration dependencies completed...\n');
 	}
 
 	async _migrateTree(treeConfig) {
@@ -84,5 +72,27 @@ export class MigrateService {
 		treeConfig = structuredClone(treeConfig);
 		treeConfig.recordIds = records.map(record => record.Id);
 		return treeConfig;
+	}
+
+	async _syncRecordTypeReferences(config) {
+		console.log('📥 Including Record Type references...');
+		await this._sobjectReferenceService.addRecordTypeReferences(
+			this._sourceDataBase,
+			this._targetDataBase,
+			config
+		);
+		console.log('\t✅ Record Type references included successfully\n');
+	}
+
+	async _updateRecordsWithReferences() {
+		console.log('🔄 Updating record references...');
+		for (const sObjectName in this._objectTypeToSourceRecords) {
+			const recordsToUpdate = await this._sobjectReferenceService.assignReferences(
+				this._objectTypeToSourceRecords[sObjectName],
+				sObjectName
+			);
+			await this._targetDataBase.update(sObjectName, recordsToUpdate);
+		}
+		console.log('✅ Updating record references completed...');
 	}
 }

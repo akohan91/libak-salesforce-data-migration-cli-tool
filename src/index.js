@@ -22,15 +22,11 @@ try {
 	console.log(`\t✅ Configuration loaded: ${getArgs().exportConfig}\n`);
 
 	if (getArgs().analyzeReferences) {
-		await new ReferenceAnalyzerService(
-			exportConfig.treeConfig
-		).analyzeReferences();
+		await new ReferenceAnalyzerService(exportConfig.treeConfig)
+			.analyzeReferences();
 	} else {
-		await new MigrateService(
-			exportConfig.treeConfig,
-			exportConfig.dependencyConfig
-		).migrateData();
-		console.log('\n✅ Migration completed successfully!\n');
+		await new MigrateService(exportConfig.treeConfig, exportConfig.dependencyConfig)
+			.migrateData();
 	}
 } catch (error) {
 	const { handled } = handleCliError(error);
