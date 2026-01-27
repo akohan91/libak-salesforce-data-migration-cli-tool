@@ -1,5 +1,5 @@
 import { SoqlBuilder } from "./soql-builder.js";
-import { getArgs, getConnection, getSourceDb, getTargetDb } from '../cli.js'
+import { getSourceDb, getTargetDb } from '../cli.js'
 import { SobjectReferenceService } from "./sobject-reference-service.js";
 
 export class MigrateService {
