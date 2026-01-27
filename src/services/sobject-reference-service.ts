@@ -1,20 +1,26 @@
-import { getSourceDb, getTargetDb } from "../cli.js";
-import { SoqlBuilder } from "./soql-builder.js";
+import { getSourceDb, getTargetDb } from "../cli.ts";
+import type { TreeConfig } from "../types/types.ts";
+import { SoqlBuilder } from "./soql-builder.ts";
+import type { SaveResult } from "jsforce";
 
 export class SobjectReferenceService {
+	_referenceFields: string[];
+	_sourceRecordIdToTargetRecordId;
+	
 	constructor() {
 		this._referenceFields = [];
 		this._sourceRecordIdToTargetRecordId = new Map();
 	}
 
-	async assignReferences(records, sObjectApiName) {
-		records = structuredClone(records);
-		this.sObjectMetadata = await getSourceDb()
+	async assignReferences(sourceRecords: any[], sObjectApiName: string): Promise<any[]> {
+		sourceRecords = structuredClone(sourceRecords);
+		const sObjectMetadata = await getSourceDb()
 			.sObjectDescribe(sObjectApiName);
-		this._referenceFields = this.sObjectMetadata.fields
-			.map(field => (field.type === 'reference' || field.name === 'Id') && field.name);
+		this._referenceFields = sObjectMetadata.fields
+			.filter(field => (field.type === 'reference' || field.name === 'Id'))
+			.map(field => field.name);
 
-		return records.map(record => {
+		return sourceRecords.map(record => {
 			delete record.attributes;
 			for (const fieldName in record) {
 				this._deleteNulls(record, fieldName);
@@ -24,43 +30,50 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addReferencesFromDbResults(sourceRecords, targetDbResults, treeConfig) {
+	async addReferencesFromDbResults(
+		sourceRecords: any[],
+		targetDbResults: SaveResult[],
+		treeConfig: TreeConfig
+	): Promise<void> {
+		sourceRecords = structuredClone(sourceRecords);
 		const sourceRecordIdToTargetRecordId = new Map();
 		for (let i = 0; i < sourceRecords.length; i++) {
-			this._sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
-			sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
+			this._sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i]?.id);
+			sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i]?.id);
 		}
 		if (!treeConfig.requiredReferences) {
-			return this._sourceRecordIdToTargetRecordId;
+			return;
 		}
 		
 		const recordIdToTargetRecord = (await getTargetDb().query(
 			new SoqlBuilder().buildSoqlByIds(
 				['Id', ...treeConfig.requiredReferences],
 				treeConfig.apiName,
-				sourceRecordIdToTargetRecordId.values().toArray()
+				[...sourceRecordIdToTargetRecordId.values()]
 			)
 		)).reduce((recordIdToRecord, record) => {
-			recordIdToRecord[record.Id] = record;
+			if (record.Id) {
+				recordIdToRecord[record.Id] = record;
+			}
 			return recordIdToRecord;
 		}, {});
 
 		sourceRecords.forEach(record => {
 			const targetRecordId = sourceRecordIdToTargetRecordId.get(record.Id);
 			const targetRecord = recordIdToTargetRecord[targetRecordId];
-			treeConfig.requiredReferences.forEach(fieldName => {
+			treeConfig.requiredReferences?.forEach(fieldName => {
 				this._sourceRecordIdToTargetRecordId.set(record[fieldName], targetRecord[fieldName]);
 			});
 		});
 	}
 
-	async addRecordTypeReferences(treeConfig) {
+	async addRecordTypeReferences(treeConfig: TreeConfig): Promise<void> {
 		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
 		const recordTypeSoql = new SoqlBuilder().buildSoqlByFieldValues(
 			['Id', 'DeveloperName'],
 			'RecordType',
 			'SobjectType',
-			sObjectTypes.values().toArray()
+			[...sObjectTypes.values()]
 		);
 		const sourceRecordTypes = await getSourceDb().query(recordTypeSoql);
 		const devNameToTargetRtId = (await getTargetDb().query(recordTypeSoql))
@@ -76,7 +89,7 @@ export class SobjectReferenceService {
 		});
 	}
 
-	_extractAllSobjectTypes(treeConfig, sobjectTypes = new Set()) {
+	_extractAllSobjectTypes(treeConfig: TreeConfig, sobjectTypes: Set<string> = new Set()): Set<string> {
 		sobjectTypes.add(treeConfig.apiName);
 		
 		if (!treeConfig.children?.length) {
@@ -89,14 +102,14 @@ export class SobjectReferenceService {
 		return sobjectTypes;
 	}
 
-	_deleteNulls (record, fieldName) {
+	_deleteNulls (record: any, fieldName: string) {
 		if (record[fieldName] === null || record[fieldName] === undefined) {
 			delete record[fieldName];
 		}
 		return record;
 	}
 
-	_assignReferences(record, fieldName) {
+	_assignReferences(record: any, fieldName: string) {
 		const fieldValue = record[fieldName];
 		if (
 			this._referenceFields.includes(fieldName) &&
