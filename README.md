@@ -60,6 +60,8 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 
 🔬 **Reference Analyzer** - Analyze your data structure to discover field-level relationships before migration
 
+💎 **TypeScript Support** - Full TypeScript implementation with strict type-checking for enhanced developer experience and code reliability
+
 ---
 
 ## Getting Started
@@ -120,7 +122,7 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
 
 3. Run the migration:
    ```bash
-   node src/index.js \
+   npm run dev -- \
      --source-org MySandbox \
      --target-org MyDevOrg \
      --export-config migration-config.json
@@ -129,6 +131,11 @@ Built on top of the official Salesforce CLI and JSForce, it provides a configura
    **Optional flags:**
    - `--analyze-references` - Analyze reference fields without migrating data
    - `--debug` - Display full error stack traces for troubleshooting
+
+   **Alternative:** You can also run TypeScript directly:
+   ```bash
+   npx tsx src/index.ts --source-org MySandbox --target-org MyDevOrg --export-config migration-config.json
+   ```
 
 4. Monitor the migration process:
    ```
@@ -242,7 +249,7 @@ The migration configuration file defines the structure of your data migration. H
 Migrate data from source to target org:
 
 ```bash
-node src/index.js \
+npm run dev -- \
   --source-org MySandbox \
   --target-org MyDevOrg \
   --export-config migration-config.json
@@ -253,7 +260,7 @@ node src/index.js \
 Analyze reference fields in your data structure without performing migration:
 
 ```bash
-node src/index.js \
+npm run dev -- \
   --source-org MySandbox \
   --target-org MyDevOrg \
   --export-config migration-config.json \
@@ -283,12 +290,14 @@ This helps you understand your data structure and automatically generates the `d
 Run migration with full error stack traces:
 
 ```bash
-node src/index.js \
+npm run dev -- \
   --source-org MySandbox \
   --target-org MyDevOrg \
   --export-config migration-config.json \
   --debug
 ```
+
+<blockquote><b>NOTE:</b> The <code>npm run dev</code> command uses <code>tsx</code> to run TypeScript directly without compilation, providing fast development iterations. The <code>--</code> separator passes arguments to the script.</blockquote>
 
 ---
 
