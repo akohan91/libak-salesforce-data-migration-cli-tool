@@ -35,7 +35,7 @@ export class SobjectReferenceService {
 		}
 		
 		const recordIdToTargetRecord = (await targetDatabase.query(
-			new SoqlBuilder().buildSoql(
+			new SoqlBuilder().buildSoqlByIds(
 				['Id', ...treeConfig.requiredReferences],
 				treeConfig.apiName,
 				sourceRecordIdToTargetRecordId.values().toArray()
@@ -56,32 +56,18 @@ export class SobjectReferenceService {
 
 	async addRecordTypeReferences(sourceDataBase, targetDataBase, treeConfig) {
 		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
-		const sourceRecordTypes = await sourceDataBase.query(`
-			SELECT Id, DeveloperName
-			FROM RecordType
-			WHERE SobjectType IN (${
-				sObjectTypes
-					.values()
-					.toArray()
-					.map(type => `'${type}'`)
-					.join(',')
-				})
-		`);
-		const devNameToTargetRtId = (await targetDataBase.query(`
-			SELECT Id, DeveloperName
-			FROM RecordType
-			WHERE SobjectType IN (${
-				sObjectTypes
-					.values()
-					.toArray()
-					.map(type => `'${type}'`)
-					.join(',')
-				})
-		`)).reduce((result, recordType) => {
-			result.set(recordType.DeveloperName, recordType.Id)
-			return result
-		}, new Map());
-		
+		const recordTypeSoql = new SoqlBuilder().buildSoqlByFieldValues(
+			['Id', 'DeveloperName'],
+			'RecordType',
+			'SobjectType',
+			sObjectTypes.values().toArray()
+		);
+		const sourceRecordTypes = await sourceDataBase.query(recordTypeSoql);
+		const devNameToTargetRtId = (await targetDataBase.query(recordTypeSoql))
+			.reduce((result, recordType) => {
+				result.set(recordType.DeveloperName, recordType.Id)
+				return result
+			}, new Map());
 		sourceRecordTypes.forEach(sourceRecordType => {
 			this._sourceRecordIdToTargetRecordId.set(
 				sourceRecordType.Id,

@@ -29,11 +29,18 @@ export class SoqlBuilder {
 		(externalIdCondition ? ` AND (${externalIdCondition})` : '');
 	}
 
-	buildSoql(fieldsToSelect, sobjectApiName, recordIds) {
+	buildSoqlByIds(fieldsToSelect, sobjectApiName, recordIds) {
 		return `
 			SELECT ${fieldsToSelect.join(',')}
 			FROM ${sobjectApiName}
 			WHERE Id IN (${recordIds.map(id => `'${id}'`).join(',')})`
+	}
+
+	buildSoqlByFieldValues(fieldsToSelect, sobjectApiName, fieldName, values) {
+		return `
+			SELECT ${fieldsToSelect.join(',')}
+			FROM ${sobjectApiName}
+			WHERE ${fieldName} IN (${values.map(value => `'${value}'`).join(',')})`
 	}
 
 	async _getAllFieldsForConfig(treeConfig) {
