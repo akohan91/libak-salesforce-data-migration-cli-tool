@@ -1,12 +1,10 @@
-import { getArgs, getConnection } from "../cli.js";
-import { Database } from "./database.js";
+import { getSourceDb } from "../cli.js";
 import { SoqlBuilder } from "./soql-builder.js";
 
 export class ReferenceAnalyzerService {
 	constructor(treeConfig) {
 		this._treeConfig = structuredClone(treeConfig);
 		this._objectTypeToSourceRecords = {};
-		this._sourceDataBase = new Database(getConnection(getArgs().sourceOrg));
 		this._sObjectFieldNameToSobjects = new Map();
 		this._sObjectNameToConfig = new Map();
 	}
@@ -33,14 +31,14 @@ export class ReferenceAnalyzerService {
 	}
 
 	async _analyzeReferences(treeConfig) {
-		const soql = await new SoqlBuilder(this._sourceDataBase).buildSoqlForConfig(treeConfig);
+		const soql = await new SoqlBuilder(getSourceDb()).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
 		}
-		const records = await this._sourceDataBase.query(soql);
+		const records = await getSourceDb().query(soql);
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
-		const fieldNameToMetadata = (await this._sourceDataBase
+		const fieldNameToMetadata = (await getSourceDb()
 			.sObjectDescribe(treeConfig.apiName)).fields
 			.reduce((fieldNameToMetadata, field) => {
 				if (field.type === 'reference') {
@@ -76,7 +74,7 @@ export class ReferenceAnalyzerService {
 		for (const fieldName in fieldNameToMetadata) {
 			if (record[fieldName]) {
 				let referenceObject = fieldNameToMetadata[fieldName].referenceTo.length > 1
-					? await this._sourceDataBase.sObjectTypeById(record[fieldName])
+					? await getSourceDb().sObjectTypeById(record[fieldName])
 					: fieldNameToMetadata[fieldName].referenceTo[0];
 				const key = `${treeConfig.apiName}.${fieldName}`;
 				if (!this._sObjectFieldNameToSobjects.has(key)) {
@@ -84,7 +82,7 @@ export class ReferenceAnalyzerService {
 				}
 				this._sObjectFieldNameToSobjects.get(key).add(referenceObject);
 				if (!this._sObjectNameToConfig.has(referenceObject)) {
-					const externalIdField = (await this._sourceDataBase.sObjectDescribe(referenceObject)).fields
+					const externalIdField = (await getSourceDb().sObjectDescribe(referenceObject)).fields
 						.filter(field => field.externalId && field.unique)
 						.map(field => field.name)
 					this._sObjectNameToConfig.set(

@@ -1,15 +1,15 @@
+import { getSourceDb, getTargetDb } from "../cli.js";
 import { SoqlBuilder } from "./soql-builder.js";
 
 export class SobjectReferenceService {
-	constructor(database) {
-		this._database = database;
+	constructor() {
 		this._referenceFields = [];
 		this._sourceRecordIdToTargetRecordId = new Map();
 	}
 
 	async assignReferences(records, sObjectApiName) {
 		records = structuredClone(records);
-		this.sObjectMetadata = await this._database
+		this.sObjectMetadata = await getSourceDb()
 			.sObjectDescribe(sObjectApiName);
 		this._referenceFields = this.sObjectMetadata.fields
 			.map(field => (field.type === 'reference' || field.name === 'Id') && field.name);
@@ -24,7 +24,7 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addReferencesFromDbResults(sourceRecords, targetDbResults, treeConfig, targetDatabase) {
+	async addReferencesFromDbResults(sourceRecords, targetDbResults, treeConfig) {
 		const sourceRecordIdToTargetRecordId = new Map();
 		for (let i = 0; i < sourceRecords.length; i++) {
 			this._sourceRecordIdToTargetRecordId.set(sourceRecords[i].Id, targetDbResults[i].id);
@@ -34,7 +34,7 @@ export class SobjectReferenceService {
 			return this._sourceRecordIdToTargetRecordId;
 		}
 		
-		const recordIdToTargetRecord = (await targetDatabase.query(
+		const recordIdToTargetRecord = (await getTargetDb().query(
 			new SoqlBuilder().buildSoqlByIds(
 				['Id', ...treeConfig.requiredReferences],
 				treeConfig.apiName,
@@ -54,7 +54,7 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addRecordTypeReferences(sourceDataBase, targetDataBase, treeConfig) {
+	async addRecordTypeReferences(treeConfig) {
 		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
 		const recordTypeSoql = new SoqlBuilder().buildSoqlByFieldValues(
 			['Id', 'DeveloperName'],
@@ -62,8 +62,8 @@ export class SobjectReferenceService {
 			'SobjectType',
 			sObjectTypes.values().toArray()
 		);
-		const sourceRecordTypes = await sourceDataBase.query(recordTypeSoql);
-		const devNameToTargetRtId = (await targetDataBase.query(recordTypeSoql))
+		const sourceRecordTypes = await getSourceDb().query(recordTypeSoql);
+		const devNameToTargetRtId = (await getTargetDb().query(recordTypeSoql))
 			.reduce((result, recordType) => {
 				result.set(recordType.DeveloperName, recordType.Id)
 				return result

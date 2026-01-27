@@ -1,9 +1,12 @@
 import { execSync } from 'child_process';
 import { program }  from 'commander';
 import jsforce from 'jsforce';
+import { Database } from './services/database.js';
 
 let _argNameToValue = null;
 let _connections = {};
+let _sourceDb = null;
+let _targetDb = null;
 
 export const initArguments = () => {
 	program
@@ -42,4 +45,18 @@ export const connectToOrgs = () => {
 
 export const getConnection = (orgAlias) => {
 	return _connections[orgAlias];
+}
+
+export const getSourceDb = () => {
+	if (!_sourceDb) {
+		_sourceDb = new Database(getConnection(getArgs().sourceOrg));
+	}
+	return _sourceDb;
+}
+
+export const getTargetDb = () => {
+	if (!_targetDb) {
+		_targetDb = new Database(getConnection(getArgs().targetOrg));
+	}
+	return _targetDb;
 }
