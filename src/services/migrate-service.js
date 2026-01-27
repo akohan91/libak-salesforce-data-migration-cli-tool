@@ -15,6 +15,19 @@ export class MigrateService {
 
 	async migrateData() {
 
+		for (const config of this._dependencyConfig) {
+			console.log('📥 Including Record Type references...');
+			await this._sobjectReferenceService.addRecordTypeReferences(
+				this._sourceDataBase,
+				this._targetDataBase,
+				config
+			);
+			console.log('\t✅ Record Type references included successfully\n');
+
+			console.log('📥 Migration data from source org...');
+			await this._migrateTree(config);
+		}
+
 		console.log('📥 Including Record Type references...');
 		await this._sobjectReferenceService.addRecordTypeReferences(
 			this._sourceDataBase,
