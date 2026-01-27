@@ -24,9 +24,10 @@ export class ReferenceAnalyzerService {
 				this._sObjectNameToConfig
 				.values()
 				.toArray()
-				.map(config => ({...config, recordIds: config.recordIds.values().toArray()}))
+				.map(config => ({...config, recordIds: config.recordIds.values().toArray()})),
+				null,
+				4
 			)
-			
 		);
 		console.log('✅ Analyzing references completed successfully');
 	}
