@@ -16,12 +16,17 @@ export class SoqlBuilder {
 		if (!recordIdList?.length) {
 			return null;
 		}
-
+		let externalIdCondition;
+		if (treeConfig.externalIdField) {
+			externalIdCondition = Array.isArray(treeConfig.externalIdField)
+				? treeConfig.externalIdField.map(fieldName => `${fieldName} != NULL`).join(' OR ')
+				: `${treeConfig.externalIdField} != NULL`
+		}
 		return `
 		SELECT ${fieldsStr}
 		FROM ${treeConfig.apiName}
 		WHERE ${treeConfig.referenceField || 'Id'} IN (${recordIdList})` + 
-		(treeConfig.externalIdField ? ` AND ${treeConfig.externalIdField} != NULL` : '');
+		(externalIdCondition ? ` AND (${externalIdCondition})` : '');
 	}
 
 	buildSoql(fieldsToSelect, sobjectApiName, recordIds) {
