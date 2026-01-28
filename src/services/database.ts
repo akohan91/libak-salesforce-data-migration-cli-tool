@@ -1,4 +1,3 @@
-import type jsforce from "jsforce";
 import { formatDatabaseErrors, displayDatabaseResults } from "./salesforce-error-handler.ts";
 import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResult } from "jsforce";
 

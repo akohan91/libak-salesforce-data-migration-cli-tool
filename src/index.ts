@@ -22,7 +22,10 @@ try {
 	console.log(`\t✅ Configuration loaded: ${getArgs().exportConfig}\n`);
 
 	if (getArgs().analyzeReferences) {
-		await new ReferenceAnalyzerService(exportConfig.treeConfig)
+		await new ReferenceAnalyzerService(
+			exportConfig.treeConfig,
+			exportConfig.skipSobjectDependencies,
+		)
 			.analyzeReferences();
 	} else {
 		await new MigrateService(exportConfig.treeConfig, exportConfig.dependencyConfig)

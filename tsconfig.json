@@ -20,22 +20,16 @@
 		/* Strict Type-Checking: */
 		"strict": true, // Enables strict type-checking for fewer runtime errors
 		"noUncheckedIndexedAccess": true, // Enforces type safety for array/object accesses
-		"noImplicitOverride": true, // Enforces explicit use of `override` for methods overriding base class methods
-		"noImplicitAny": true, // Prevents the use of `any` type unless explicitly defined
-		"skipLibCheck": true, // Skips type-checking of declaration files for faster compilation
-		"resolveJsonModule": true, // Allows importing JSON files as modules
-		"declaration": true, // Generates `.d.ts` files for type definitions
-		"allowSyntheticDefaultImports": true, // Allows default imports for CommonJS modules
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
 		"allowImportingTsExtensions": true, // Allows importing `.ts` files with their extensions
+		"noImplicitReturns": true,
 		"noEmit": true,
-		"verbatimModuleSyntax": true, // Keeps the `import`/`export` syntax as-is without transformation
 
 		// Include modern ECMAScript (ES2022) and DOM APIs for frontend
 		"lib": ["ES2022", "DOM"], // Include ES2022 features and DOM APIs for frontend development
 		// Uncomment this for backend code without DOM APIs
 		/* "lib": ["ES2022"] */
-		
-		"allowJs": true,
     	"checkJs": true
 	},
 	"include": ["src"], // Includes the `src` directory in the project
