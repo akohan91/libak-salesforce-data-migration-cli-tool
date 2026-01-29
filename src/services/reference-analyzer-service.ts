@@ -112,22 +112,34 @@ export class ReferenceAnalyzerService {
 	}
 
 	async _defineDependencyConfigs() {
+		const sObjectTypeToConfig: Map<string, TreeConfig> = new Map();
 		for (const sObjectTypeToIds of this._dependenciesMap.values()) {
-			for (const [sObjectType, sObjectIds] of sObjectTypeToIds) {
-				const externalIdField: string = (await getSourceDb().sObjectDescribe(sObjectType)).fields
-					.filter(field => field.externalId && field.unique)
-					.map(field => field.name)
-					.join(',');
-				
-				this._dependencyConfigs.push({
-					apiName: sObjectType,
-					recordIds: [...sObjectIds],
-					externalIdField,
-					referenceField: "",
-					excludedFields: [],
-					children: []
-				})
+			for (const [sObjectType, recordIds] of sObjectTypeToIds) {
+				if (!sObjectTypeToConfig.has(sObjectType)) {
+					const externalIdField: string = (await getSourceDb().sObjectDescribe(sObjectType)).fields
+						.filter(field => field.externalId && field.unique)
+						.map(field => field.name)
+						.join(',');
+					sObjectTypeToConfig.set(
+						sObjectType,
+						{
+							apiName: sObjectType,
+							recordIds: [],
+							externalIdField,
+							referenceField: "",
+							excludedFields: [],
+							children: []
+						}
+					);
+				}
+				const mergedIds: Set<string> = new Set(sObjectTypeToConfig.get(sObjectType)?.recordIds);
+				recordIds.forEach(id => mergedIds.add(id));
+				const config = sObjectTypeToConfig.get(sObjectType);
+				if (config) {
+					config.recordIds = Array.from(mergedIds);
+				}
 			}
 		}
+		this._dependencyConfigs = [...sObjectTypeToConfig.values()];
 	}
 }
