@@ -14,7 +14,7 @@ export class SoqlBuilder {
 		if (treeConfig.requiredReferences) {
 			fieldsList = [...fieldsList, ...treeConfig.requiredReferences];
 		}
-		const fieldsStr = fieldsList.join(',');
+		const fieldsStr = Array.from(new Set(fieldsList)).join(',');
 		const recordIdList = treeConfig.referenceField
 			? treeConfig?.parentRecordIds?.map(id => `'${id}'`).join(',')
 			: treeConfig?.recordIds?.map(id => `'${id}'`).join(',');
@@ -57,7 +57,7 @@ export class SoqlBuilder {
 		
 		return sObjectMetadata.fields
 			.filter((field) => {
-				if (field.type === FieldType.id || field.type == FieldType.id) {
+				if (field.type === FieldType.id || field.type == FieldType.reference) {
 					return true;
 				}
 				if (
