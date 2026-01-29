@@ -40,7 +40,7 @@ export const displayDatabaseResults = (
 	actionName: DML,
 	results: SaveResult[],
 	sObjectApiName: string
-): void => {
+): DatabaseUnifiedResult => {
 	const summary: DatabaseUnifiedResult = _formatDatabaseErrors(results);
 	if (summary.successCount > 0) {
 		console.log(`\t✅ ${actionName}ed ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}: ${[...summary.successIds].join(', ')}`);
@@ -52,6 +52,6 @@ export const displayDatabaseResults = (
 		summary.errors?.forEach(error => {
 			console.log(`\t   • ${error.message}${error.statusCode ? ' ' + error.statusCode : ''}${error.fields.length ? ' Fields: ' + error.fields : ''}`);
 		});
-		process.exit(1);
 	}
+	return summary;
 }

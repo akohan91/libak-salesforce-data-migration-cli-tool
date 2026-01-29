@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 
-import { initArguments, connectToOrgs, getArgs } from './cli.ts'
+import { initArguments, connectToOrgs, getArgs, getTargetDb } from './cli.ts'
 import { MigrateService } from './services/migrate-service.ts';
 import { handleCliError } from './services/salesforce-error-handler.ts';
 import { ReferenceAnalyzerService } from './services/reference-analyzer-service.ts';
@@ -33,5 +33,6 @@ try {
 	}
 } catch (error) {
 	handleCliError(error);
+	await getTargetDb().doRollback();
 	process.exit(1);
 }

@@ -42,7 +42,7 @@ export enum DML {
 	insert = 'insert',
 	upsert = 'upsert',
 	update = 'update',
-
+	delete = 'delete',
 }
 
 export enum HTTP {

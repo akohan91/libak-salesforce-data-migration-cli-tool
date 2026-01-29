@@ -1,4 +1,4 @@
-import { DML, HTTP } from "../types/types.ts";
+import { DatabaseUnifiedResult, DML, HTTP } from "../types/types.ts";
 import { displayDatabaseResults } from "./salesforce-error-handler.ts";
 import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResult } from "jsforce";
 
@@ -7,11 +7,13 @@ export class Database {
 	_connection: Connection;
 	_sObjectNameToDescribe: any;
 	_globalDescribe: DescribeGlobalResult | null;
+	_recordsForRollback: Map<string, Set<string>>[];
 
 	constructor(connection: Connection) {
 		this._connection = connection;
 		this._sObjectNameToDescribe = {};
 		this._globalDescribe = null;
+		this._recordsForRollback = [];
 	}
 
 	async query(soql: string): Promise<any[]> {
@@ -31,8 +33,10 @@ export class Database {
 		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.create(records);
+		this._registerInsertedRecords(sObjectApiName, rets);
 
-		displayDatabaseResults(DML.insert, rets, sObjectApiName);
+		const dbSummaryResult: DatabaseUnifiedResult = displayDatabaseResults(DML.insert, rets, sObjectApiName);
+		await this._doRollbackIfFailed(dbSummaryResult);
 		return rets;
 	}
 
@@ -45,7 +49,8 @@ export class Database {
 			.sobject(sObjectApiName)
 			.update(records);
 
-		displayDatabaseResults(DML.update, rets, sObjectApiName);
+		const dbSummaryResult: DatabaseUnifiedResult = displayDatabaseResults(DML.update, rets, sObjectApiName);
+		await this._doRollbackIfFailed(dbSummaryResult);
 		return rets;
 	}
 
@@ -53,7 +58,7 @@ export class Database {
 		sObjectApiName: string,
 		records: any[],
 		externalIdField: string,
-		allOrNone: boolean = false
+		allOrNone: boolean = true
 	): Promise<SaveResult[]> {
 		if (!this._connection) {
 			throw new Error('Not connected to Salesforce. Call connect() first.');
@@ -63,7 +68,22 @@ export class Database {
 			.sobject(sObjectApiName)
 			.upsert(records, externalIdField, { allOrNone });
 
-		displayDatabaseResults(DML.upsert, rets, sObjectApiName);
+		const dbSummaryResult: DatabaseUnifiedResult = displayDatabaseResults(DML.upsert, rets, sObjectApiName);
+		await this._doRollbackIfFailed(dbSummaryResult);
+		
+		return rets;
+	}
+
+	async delete(sObjectApiName: string, recordIds: string[]): Promise<SaveResult[]> {
+		if (!this._connection) {
+			throw new Error('Not connected to Salesforce. Call connect() first.');
+		}
+
+		const rets = await this._connection
+			.sobject(sObjectApiName)
+			.delete(recordIds);
+
+		displayDatabaseResults(DML.delete, rets, sObjectApiName);
 		return rets;
 	}
 
@@ -95,5 +115,43 @@ export class Database {
 			return map;
 		}, new Map());
 		return prefixMap.get(recordId.substring(0, 3));
+	}
+
+	async doRollback() {
+		if (!this._recordsForRollback.length) {
+			return;
+		}
+		console.log('\n🚨 ROLLBACK IN PROGRESS...');
+		while (this._recordsForRollback.length > 0) {
+			const sObjectTypeToRecIds = this._recordsForRollback?.pop();
+			for (const [sObjectType, sObjectIds] of sObjectTypeToRecIds || []) {
+				await this.delete(
+					sObjectType,
+					Array.from(sObjectIds?.values() || [])
+				);
+			}
+		}
+	}
+
+	_registerInsertedRecords(sObjectType: string, dbResults: SaveResult[]): void {
+		this._recordsForRollback.push(
+			new Map([[
+				sObjectType,
+				dbResults.reduce((recordIds: Set<string>, dbResult: SaveResult) => {
+					if (dbResult.id) {
+						recordIds.add(dbResult.id);
+					}
+					return recordIds;
+				},new Set<string>())
+			]])
+		);
+	}
+
+	async _doRollbackIfFailed(dbSummaryResult: DatabaseUnifiedResult) {
+		if (dbSummaryResult.errorCount === 0) {
+			return;
+		}
+		await this.doRollback();
+		process.exit(1);
 	}
 }
