@@ -1,4 +1,4 @@
-import { formatDatabaseErrors, displayDatabaseResults } from "./salesforce-error-handler.ts";
+import { displayDatabaseResults } from "./salesforce-error-handler.ts";
 import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResult } from "jsforce";
 
 export class Database {
@@ -30,9 +30,8 @@ export class Database {
 		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.create(records);
-		
-		const summary = formatDatabaseErrors(rets);
-		displayDatabaseResults('insert', summary, sObjectApiName);
+
+		displayDatabaseResults('insert', rets, sObjectApiName);
 		return rets;
 	}
 
@@ -44,9 +43,8 @@ export class Database {
 		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.update(records);
-		
-		const summary = formatDatabaseErrors(rets);
-		displayDatabaseResults('update', summary, sObjectApiName);
+
+		displayDatabaseResults('update', rets, sObjectApiName);
 		return rets;
 	}
 
@@ -63,9 +61,8 @@ export class Database {
 		const rets = await this._connection
 			.sobject(sObjectApiName)
 			.upsert(records, externalIdField, { allOrNone });
-		
-		const summary = formatDatabaseErrors(rets);
-		displayDatabaseResults('upsert', summary, sObjectApiName);
+
+		displayDatabaseResults('upsert', rets, sObjectApiName);
 		return rets;
 	}
 

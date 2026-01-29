@@ -5,9 +5,10 @@ export const handleCliError = (error: any) => {
 	console.error(error);
 }
 
-export const formatDatabaseErrors = (results: SaveResult[]): DatabaseUnifiedResult => {
+export const _formatDatabaseErrors = (results: SaveResult[]): DatabaseUnifiedResult => {
 	const successCount = results.filter(ret => ret.success).length;
-	const successIds = results.map(ret => ret.id);
+	const successIds: Set<string> = new Set<string>();
+	results.forEach(ret => ret.id && successIds.add(ret.id));
 	const errorCount = results.length - successCount;
 	
 	const summary: DatabaseUnifiedResult = {
@@ -37,18 +38,19 @@ export const formatDatabaseErrors = (results: SaveResult[]): DatabaseUnifiedResu
 
 export const displayDatabaseResults = (
 	actionName: string,
-	summary: DatabaseUnifiedResult,
+	results: SaveResult[],
 	sObjectApiName: string
 ): void => {
+	const summary: DatabaseUnifiedResult = _formatDatabaseErrors(results);
 	if (summary.successCount > 0) {
-		console.log(`\t✅ ${actionName}ed ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}: ${summary.successIds.join(', ')}`);
+		console.log(`\t✅ ${actionName}ed ${summary.successCount} ${sObjectApiName} record${summary.successCount !== 1 ? 's' : ''}: ${[...summary.successIds].join(', ')}`);
 	}
 	
 	if (summary.errorCount > 0) {
 		console.log(`\t⚠️  Failed to ${actionName} ${summary.errorCount} ${sObjectApiName} record${summary.errorCount !== 1 ? 's' : ''}:`);
 		
 		summary.errors?.forEach(error => {
-			console.log(`\t   • ${error.message} (${error.statusCode})`);
+			console.log(`\t   • ${error.message}${error.statusCode ? ' ' + error.statusCode : ''}${error.fields.length ? ' Fields: ' + error.fields : ''}`);
 		});
 	}
 }
