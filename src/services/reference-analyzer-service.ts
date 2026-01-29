@@ -1,38 +1,38 @@
 import type { Field } from "jsforce";
 import { getSourceDb } from "../cli.ts";
-import type { TreeConfig } from "../types/types.ts";
+import { FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 
 export class ReferenceAnalyzerService {
 	
 	_treeConfig: TreeConfig;
 	_skipSobjectDependencies?: string[];
-	_skippedDependencyRecordIds: string[];
+	_skipMainTreeRecordIds: string[];
 	_objectTypeToSourceRecords: {[key: string]: any[]};
-	_fieldNameToSobjectTypes;
-	_sObjectTypeToConfig;
+	_dependenciesMap: Map<string, Map<string, Set<string>>>;
+	_dependencyConfigs: TreeConfig[];
 	
 	constructor(treeConfig: TreeConfig, skipSobjectDependencies: string[]) {
 		this._treeConfig = treeConfig;
 		this._skipSobjectDependencies = skipSobjectDependencies;
-		this._skippedDependencyRecordIds = [];
+		this._skipMainTreeRecordIds = [];
 		this._objectTypeToSourceRecords = {};
-		this._fieldNameToSobjectTypes = new Map();
-		this._sObjectTypeToConfig = new Map();
+		this._dependenciesMap = new Map();
+		this._dependencyConfigs = [];
 	}
 
 	async analyzeReferences(): Promise<void>  {
-		console.log('📥 Analyzing references for provided treeConfig...');
+		console.log('🔄 Analyzing references for provided treeConfig...');
 		await this._loadSourceRecords(this._treeConfig);
-		await this._analyzeReferences();
-		console.log(this._fieldNameToSobjectTypes);
-		console.log(
-			JSON.stringify(
-				[...this._sObjectTypeToConfig.values()]
-				.map(config => ({...config, recordIds: [...config.recordIds.values()]}))
-			)
-		);
-		console.log('✅ Analyzing references completed successfully');
+		console.log('\n📥 Records for analysis successfully loaded');
+		await this._analyzeConfigReferences();
+		await this._defineDependencyConfigs();
+		console.log('\n✅ Analyzing references completed successfully');
+
+		console.log('\n✅ Dependencies Map:');
+		console.log(this._dependenciesMap);
+		console.log('\n✅ Dependencies Configs:');
+		console.log(JSON.stringify(this._dependencyConfigs));
 	}
 
 	async _loadSourceRecords(treeConfig: TreeConfig) {
@@ -53,27 +53,22 @@ export class ReferenceAnalyzerService {
 		}
 	}
 
-	async _analyzeReferences(): Promise<void>  {
-		
+	async _analyzeConfigReferences(): Promise<void>  {
 		for (const sObjectType in this._objectTypeToSourceRecords) {
 			if (!this._objectTypeToSourceRecords[sObjectType]) {
 				continue;
 			}
 			const records: any[] = this._objectTypeToSourceRecords[sObjectType];
 			const fields: Field[] = (await getSourceDb().sObjectDescribe(sObjectType)).fields;
-			const fieldNameToMetadata = fields
+			const fieldNameToFieldMetadata: {[key: string]: Field;} = fields
 				.reduce((fieldNameToMetadata: {[key:string]: Field}, field) => {
-					if (
-						field.type === 'reference' &&
-						field.createable &&
-						field.updateable
-					) {
+					if (field.type === FieldType.reference && field.createable && field.updateable) {
 						fieldNameToMetadata[field.name] = field;
 					}
 					return fieldNameToMetadata;
 				}, {});
 			for (const record of records) {
-				await this._addRelationsToMap(record, fieldNameToMetadata, sObjectType);
+				await this.__defineDependenciesMap(record, fieldNameToFieldMetadata, sObjectType);
 			}
 		}
 	}
@@ -81,48 +76,57 @@ export class ReferenceAnalyzerService {
 	_addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig  {
 		const recordIds: string[] = records.map(record => record.Id);
 		treeConfig.recordIds = recordIds;
-		this._skippedDependencyRecordIds = [...this._skippedDependencyRecordIds, ...recordIds];
+		this._skipMainTreeRecordIds = [...this._skipMainTreeRecordIds, ...recordIds];
 		return treeConfig;
 	}
 
-	async _addRelationsToMap(
+	async __defineDependenciesMap(
 		record: any,
-		fieldNameToMetadata: {[key: string]: Field},
+		fieldNameToFieldMetadata: {[key: string]: Field},
 		sobjectType: string
 	): Promise<void> {
-		for (const fieldName in fieldNameToMetadata) {
-			if (record[fieldName] && !this._skippedDependencyRecordIds.includes(record[fieldName])) {
-				const referenceTo = fieldNameToMetadata[fieldName]?.referenceTo;
-				if (!referenceTo || referenceTo.length === 0) {
+		for (const fieldName in fieldNameToFieldMetadata) {
+			if (record[fieldName] && !this._skipMainTreeRecordIds.includes(record[fieldName])) {
+				const referenceSobjects = fieldNameToFieldMetadata[fieldName]?.referenceTo;
+				if (!referenceSobjects || referenceSobjects.length === 0) {
 					continue;
 				}
-				const referenceObject = referenceTo.length > 1
+				const referenceObject = referenceSobjects.length > 1
 					? await getSourceDb().sObjectTypeById(record[fieldName])
-					: referenceTo[0];
+					: referenceSobjects[0];
 				
 				if (
 					!referenceObject ||
 					this._skipSobjectDependencies?.includes(referenceObject) ||
-					referenceObject === 'RecordType'
+					referenceObject === SObjectName.RecordType
 				) {
 					continue;
 				}
 				const key = `${sobjectType}.${fieldName}`;
-				if (!this._fieldNameToSobjectTypes.has(key)) {
-					this._fieldNameToSobjectTypes.set(key, new Set());
+				if (!this._dependenciesMap.has(key)) {
+					this._dependenciesMap.set(key, new Map([[referenceObject, new Set()]]));
 				}
-				this._fieldNameToSobjectTypes.get(key).add(referenceObject);
-				if (!this._sObjectTypeToConfig.has(referenceObject)) {
-					const externalIdField = (await getSourceDb().sObjectDescribe(referenceObject)).fields
-						.filter(field => field.externalId && field.unique)
-						.map(field => field.name)
-					this._sObjectTypeToConfig.set(
-						referenceObject,
-						{apiName: referenceObject, recordIds: new Set(), externalIdField}
-					)
+				this._dependenciesMap?.get(key)?.get(referenceObject)?.add(record[fieldName]);
+			}
+		}
+	}
 
-				}
-				this._sObjectTypeToConfig.get(referenceObject).recordIds.add(record[fieldName]);
+	async _defineDependencyConfigs() {
+		for (const sObjectTypeToIds of this._dependenciesMap.values()) {
+			for (const [sObjectType, sObjectIds] of sObjectTypeToIds) {
+				const externalIdField: string = (await getSourceDb().sObjectDescribe(sObjectType)).fields
+					.filter(field => field.externalId && field.unique)
+					.map(field => field.name)
+					.join(',');
+				
+				this._dependencyConfigs.push({
+					apiName: sObjectType,
+					recordIds: [...sObjectIds],
+					externalIdField,
+					referenceField: "",
+					excludedFields: [],
+					children: []
+				})
 			}
 		}
 	}

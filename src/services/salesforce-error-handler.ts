@@ -1,5 +1,5 @@
 import type { SaveError, SaveResult } from "jsforce";
-import type { DatabaseUnifiedResult } from "../types/types.ts";
+import type { DatabaseUnifiedResult, DML } from "../types/types.ts";
 
 export const handleCliError = (error: any) => {
 	console.error(error);
@@ -37,7 +37,7 @@ export const _formatDatabaseErrors = (results: SaveResult[]): DatabaseUnifiedRes
 }
 
 export const displayDatabaseResults = (
-	actionName: string,
+	actionName: DML,
 	results: SaveResult[],
 	sObjectApiName: string
 ): void => {
@@ -52,5 +52,6 @@ export const displayDatabaseResults = (
 		summary.errors?.forEach(error => {
 			console.log(`\t   • ${error.message}${error.statusCode ? ' ' + error.statusCode : ''}${error.fields.length ? ' Fields: ' + error.fields : ''}`);
 		});
+		process.exit(1);
 	}
 }

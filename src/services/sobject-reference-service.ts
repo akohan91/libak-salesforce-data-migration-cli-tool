@@ -1,7 +1,7 @@
 import { getSourceDb, getTargetDb } from "../cli.ts";
-import type { TreeConfig } from "../types/types.ts";
+import { FieldName, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
-import type { SaveResult } from "jsforce";
+import type { Field, SaveResult } from "jsforce";
 
 export class SobjectReferenceService {
 	_referenceFields: string[];
@@ -12,7 +12,11 @@ export class SobjectReferenceService {
 		this._sourceRecordIdToTargetRecordId = new Map();
 	}
 
-	async assignReferences(sourceRecords: any[], sObjectApiName: string): Promise<any[]> {
+	async assignReferences(
+		sourceRecords: any[],
+		sObjectApiName: string,
+		keepField: (fieldMetadata: Field) => boolean
+	): Promise<any[]> {
 		sourceRecords = structuredClone(sourceRecords);
 		const sObjectMetadata = await getSourceDb()
 			.sObjectDescribe(sObjectApiName);
@@ -26,6 +30,10 @@ export class SobjectReferenceService {
 				this._deleteNulls(record, fieldName);
 				this._assignReferences(record, fieldName);
 			}
+			sObjectMetadata.fields
+				.forEach((fieldMetadata: Field) => {
+					!keepField(fieldMetadata) && delete record[fieldMetadata.name]
+				});
 			return record;
 		});
 	}
@@ -47,7 +55,7 @@ export class SobjectReferenceService {
 		
 		const recordIdToTargetRecord = (await getTargetDb().query(
 			new SoqlBuilder().buildSoqlByIds(
-				['Id', ...treeConfig.requiredReferences],
+				[FieldName.Id, ...treeConfig.requiredReferences],
 				treeConfig.apiName,
 				[...sourceRecordIdToTargetRecordId.values()]
 			)
@@ -70,9 +78,9 @@ export class SobjectReferenceService {
 	async addRecordTypeReferences(treeConfig: TreeConfig): Promise<void> {
 		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
 		const recordTypeSoql = new SoqlBuilder().buildSoqlByFieldValues(
-			['Id', 'DeveloperName'],
-			'RecordType',
-			'SobjectType',
+			[FieldName.Id, FieldName.DeveloperName],
+			FieldName.RecordType,
+			FieldName.SobjectType,
 			[...sObjectTypes.values()]
 		);
 		const sourceRecordTypes = await getSourceDb().query(recordTypeSoql);

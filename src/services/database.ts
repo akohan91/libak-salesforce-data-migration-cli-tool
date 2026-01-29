@@ -1,3 +1,4 @@
+import { DML, HTTP } from "../types/types.ts";
 import { displayDatabaseResults } from "./salesforce-error-handler.ts";
 import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResult } from "jsforce";
 
@@ -31,7 +32,7 @@ export class Database {
 			.sobject(sObjectApiName)
 			.create(records);
 
-		displayDatabaseResults('insert', rets, sObjectApiName);
+		displayDatabaseResults(DML.insert, rets, sObjectApiName);
 		return rets;
 	}
 
@@ -44,7 +45,7 @@ export class Database {
 			.sobject(sObjectApiName)
 			.update(records);
 
-		displayDatabaseResults('update', rets, sObjectApiName);
+		displayDatabaseResults(DML.update, rets, sObjectApiName);
 		return rets;
 	}
 
@@ -62,7 +63,7 @@ export class Database {
 			.sobject(sObjectApiName)
 			.upsert(records, externalIdField, { allOrNone });
 
-		displayDatabaseResults('upsert', rets, sObjectApiName);
+		displayDatabaseResults(DML.upsert, rets, sObjectApiName);
 		return rets;
 	}
 
@@ -74,7 +75,7 @@ export class Database {
 			return this._sObjectNameToDescribe[sObjectName];
 		}
 		const response = await this._connection.request<DescribeSObjectResult>({
-			method: 'GET',
+			method: HTTP.GET,
 			url: `/services/data/v62.0/sobjects/${sObjectName}/describe`
 		});
 		this._sObjectNameToDescribe[sObjectName] = response;
