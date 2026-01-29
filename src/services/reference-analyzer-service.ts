@@ -68,7 +68,7 @@ export class ReferenceAnalyzerService {
 					return fieldNameToMetadata;
 				}, {});
 			for (const record of records) {
-				await this.__defineDependenciesMap(record, fieldNameToFieldMetadata, sObjectType);
+				await this._defineDependenciesMap(record, fieldNameToFieldMetadata, sObjectType);
 			}
 		}
 	}
@@ -80,7 +80,7 @@ export class ReferenceAnalyzerService {
 		return treeConfig;
 	}
 
-	async __defineDependenciesMap(
+	async _defineDependenciesMap(
 		record: any,
 		fieldNameToFieldMetadata: {[key: string]: Field},
 		sobjectType: string
