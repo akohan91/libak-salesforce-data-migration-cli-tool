@@ -1,4 +1,4 @@
-import { getSourceDb, getTargetDb } from "../cli.ts";
+import { getSourceDb, getTargetDb } from "./database.ts";
 import { FieldName, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 import type { Field, SaveResult } from "jsforce";

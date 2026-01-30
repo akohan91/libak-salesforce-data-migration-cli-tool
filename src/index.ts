@@ -1,9 +1,9 @@
 import { readFileSync } from 'fs';
-
-import { initArguments, connectToOrgs, getArg, getTargetDb } from './cli.ts'
+import { initArguments, connectToOrgs, getArg } from './services/cli.ts'
 import { MigrateService } from './services/migrate-service.ts';
 import { ReferenceAnalyzerService } from './services/reference-analyzer-service.ts';
 import { CliArgName } from './types/types.ts';
+import { getTargetDb } from './services/database.ts';
 
 
 try {

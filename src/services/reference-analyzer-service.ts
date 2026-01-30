@@ -1,5 +1,5 @@
 import type { Field } from "jsforce";
-import { getSourceDb } from "../cli.ts";
+import { getSourceDb } from "./database.ts";
 import { FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 
