@@ -1,5 +1,5 @@
 import { SoqlBuilder } from "./soql-builder.ts";
-import { getSourceDb, getTargetDb } from '../cli.ts'
+import { getSourceDb, getTargetDb } from './database.ts'
 import { SobjectReferenceService } from "./sobject-reference-service.ts";
 import { FieldType, type TreeConfig } from "../types/types.ts";
 

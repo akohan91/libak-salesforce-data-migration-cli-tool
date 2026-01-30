@@ -1,4 +1,5 @@
-import { DatabaseUnifiedResult, DML, HTTP } from "../types/types.ts";
+import { getArg, getConnection } from "./cli.ts";
+import { CliArgName, DatabaseUnifiedResult, DML, HTTP } from "../types/types.ts";
 import { displayDatabaseResults } from "./salesforce-error-handler.ts";
 import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResult } from "jsforce";
 
@@ -154,4 +155,20 @@ export class Database {
 		await this.doRollback();
 		process.exit(1);
 	}
+}
+
+let _sourceDb: Database | null = null;
+export const getSourceDb = (): Database => {
+	if (!_sourceDb) {
+		_sourceDb = new Database(getConnection(getArg(CliArgName.sourceOrg)));
+	}
+	return _sourceDb;
+}
+
+let _targetDb: Database | null = null;
+export const getTargetDb = (): Database => {
+	if (!_targetDb) {
+		_targetDb = new Database(getConnection(getArg(CliArgName.targetOrg)));
+	}
+	return _targetDb;
 }

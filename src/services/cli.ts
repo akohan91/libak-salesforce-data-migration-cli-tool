@@ -1,15 +1,10 @@
 import { execSync } from 'child_process';
 import { Connection } from 'jsforce';
-
 import { Command, type OptionValues }  from 'commander';
-import { Database } from './services/database.ts';
-import { CliArgName } from './types/types.ts';
+import { CliArgName } from '../types/types.ts';
 
 let _argNameToValue: OptionValues;
 let _connections: {[key: string]: Connection} = {};
-
-let _sourceDb: Database | null = null;
-let _targetDb: Database | null = null;
 
 export const initArguments = (): void => {
 	const program = new Command();
@@ -51,18 +46,4 @@ export const getConnection = (orgAlias: string): Connection => {
 		return _connections[orgAlias];
 	}
 	throw new Error(`There are no connection for ${orgAlias}.`);
-}
-
-export const getSourceDb = (): Database => {
-	if (!_sourceDb) {
-		_sourceDb = new Database(getConnection(getArg(CliArgName.sourceOrg)));
-	}
-	return _sourceDb;
-}
-
-export const getTargetDb = (): Database => {
-	if (!_targetDb) {
-		_targetDb = new Database(getConnection(getArg(CliArgName.targetOrg)));
-	}
-	return _targetDb;
 }
