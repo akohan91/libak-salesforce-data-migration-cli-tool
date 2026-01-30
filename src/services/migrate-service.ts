@@ -18,26 +18,31 @@ export class MigrateService {
 	}
 
 	async migrateData(): Promise<void> {
+		console.log('🔄 Migration dependencies...');
 		await this._migrateDependencies();
-		await this._syncRecordTypeReferences(this._treeConfig);
-		
+		console.log('\n✅ Migration dependencies completed...');
+
 		console.log('\n🔄 Migration main tree...');
-		await this._migrateTree(this._treeConfig);
-		console.log('✅ Migration main tree completed...\n');
-		
-		await this._updateRecordsWithReferences();
+		await this._migrateConfig(this._treeConfig);
+		console.log('\n✅ Migration main tree completed...\n');
 	}
 
 	async _migrateDependencies(): Promise<void> {
-		console.log('🔄 Migration dependencies...');
+		
 		if (!this._dependencyConfig) {
+			console.log(`\t⚠️  no dependencies configured.`);
 			return;
 		}
 		for (const config of this._dependencyConfig) {
-			await this._syncRecordTypeReferences(config);
-			await this._migrateTree(config);
+			await this._migrateConfig(config);
 		}
-		console.log('✅ Migration dependencies completed...\n');
+		
+	}
+
+	async _migrateConfig(treeConfig: TreeConfig): Promise<void> {
+		await this._syncRecordTypeReferences(treeConfig);
+		await this._migrateTree(treeConfig);
+		await this._updateRecordsWithReferences();
 	}
 
 	async _migrateTree(treeConfig: TreeConfig): Promise<void> {

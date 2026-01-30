@@ -47,7 +47,9 @@ export const displayDatabaseResults = (
 		console.log(`\t⚠️  Failed to ${actionName} ${summary.errorCount} ${sObjectApiName} record${summary.errorCount !== 1 ? 's' : ''}:`);
 		
 		summary.errors?.forEach(error => {
-			console.log(`\t • ${error.message}${error.statusCode ? ' ' + error.statusCode : ''}${error.fields.length ? ' Fields: ' + error.fields : ''}`);
+			console.log(`\t • ${error.message}`);
+			console.log(`${error.statusCode ? '\n\t• Status Code: ' + error.statusCode : ''}`);
+			console.log(`${error.fields.length ? '\n\t• Fields: ' + error.fields : ''}`);
 		});
 	}
 	return summary;
