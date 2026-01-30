@@ -1,9 +1,6 @@
 import type { SaveError, SaveResult } from "jsforce";
 import type { DatabaseUnifiedResult, DML } from "../types/types.ts";
 
-export const handleCliError = (error: any) => {
-	console.error(error);
-}
 
 export const _formatDatabaseErrors = (results: SaveResult[]): DatabaseUnifiedResult => {
 	const successCount = results.filter(ret => ret.success).length;
@@ -50,7 +47,7 @@ export const displayDatabaseResults = (
 		console.log(`\t⚠️  Failed to ${actionName} ${summary.errorCount} ${sObjectApiName} record${summary.errorCount !== 1 ? 's' : ''}:`);
 		
 		summary.errors?.forEach(error => {
-			console.log(`\t   • ${error.message}${error.statusCode ? ' ' + error.statusCode : ''}${error.fields.length ? ' Fields: ' + error.fields : ''}`);
+			console.log(`\t • ${error.message}${error.statusCode ? ' ' + error.statusCode : ''}${error.fields.length ? ' Fields: ' + error.fields : ''}`);
 		});
 	}
 	return summary;

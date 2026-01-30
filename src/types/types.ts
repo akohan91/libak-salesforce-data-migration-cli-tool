@@ -45,6 +45,13 @@ export enum DML {
 	delete = 'delete',
 }
 
+export enum CliArgName {
+	sourceOrg = 'sourceOrg',
+	targetOrg = 'targetOrg',
+	exportConfig = 'exportConfig',
+	analyzeReferences = 'analyzeReferences',
+}
+
 export enum HTTP {
 	GET = 'GET'
 }

@@ -1,9 +1,9 @@
 import { readFileSync } from 'fs';
 
-import { initArguments, connectToOrgs, getArgs, getTargetDb } from './cli.ts'
+import { initArguments, connectToOrgs, getArg, getTargetDb } from './cli.ts'
 import { MigrateService } from './services/migrate-service.ts';
-import { handleCliError } from './services/salesforce-error-handler.ts';
 import { ReferenceAnalyzerService } from './services/reference-analyzer-service.ts';
+import { CliArgName } from './types/types.ts';
 
 
 try {
@@ -17,22 +17,23 @@ try {
 
 	console.log('📄 Loading export configuration...');
 	const exportConfig = JSON.parse(
-		readFileSync(getArgs().exportConfig, 'utf-8')
+		readFileSync(getArg(CliArgName.exportConfig), 'utf-8')
 	);
-	console.log(`\t✅ Configuration loaded: ${getArgs().exportConfig}\n`);
+	console.log(`\t✅ Configuration loaded: ${getArg(CliArgName.exportConfig)}\n`);
 
-	if (getArgs().analyzeReferences) {
+	if (getArg(CliArgName.analyzeReferences)) {
 		await new ReferenceAnalyzerService(
 			exportConfig.treeConfig,
 			exportConfig.skipSobjectDependencies,
-		)
-			.analyzeReferences();
+		).analyzeReferences();
 	} else {
-		await new MigrateService(exportConfig.treeConfig, exportConfig.dependencyConfig)
-			.migrateData();
+		await new MigrateService(
+			exportConfig.treeConfig,
+			exportConfig.dependencyConfig
+		).migrateData();
 	}
 } catch (error) {
-	handleCliError(error);
+	console.error(error);
 	await getTargetDb().doRollback();
 	process.exit(1);
 }
