@@ -3,6 +3,7 @@ import { Connection } from 'jsforce';
 
 import { Command, type OptionValues }  from 'commander';
 import { Database } from './services/database.ts';
+import { CliArgName } from './types/types.ts';
 
 let _argNameToValue: OptionValues;
 let _connections: {[key: string]: Connection} = {};
@@ -17,30 +18,29 @@ export const initArguments = (): void => {
 		.option('-t, --target-org <name>', 'Organization to where the data comes.')
 		.option('-e, --export-config <name>', 'Path to the import configuration file')
 		.option('-a, --analyze-references', 'Runs the reference analyzer.')
-		.option('-d, --debug', 'Runs in the debug mode.')
 		.parse(process.argv);
 	_argNameToValue = program.opts();
 };
 
-export const getArgs = (): OptionValues =>  {
-	return _argNameToValue;
+export const getArg = (cliArgName: CliArgName): string =>  {
+	return _argNameToValue[cliArgName];
 };
 
 export const connectToOrgs = (): void => {
 	const sourceLoginConfig = JSON.parse(execSync(
-		`sf org display --target-org ${getArgs().sourceOrg} --verbose --json`,
+		`sf org display --target-org ${getArg(CliArgName.sourceOrg)} --verbose --json`,
 		{ encoding: 'utf-8' }
 	)).result;
-	_connections[getArgs().sourceOrg] = new Connection({
+	_connections[getArg(CliArgName.sourceOrg)] = new Connection({
 		instanceUrl: sourceLoginConfig.instanceUrl,
 		accessToken: sourceLoginConfig.accessToken
 	});
 	
 	const targetLoginConfig = JSON.parse(execSync(
-		`sf org display --target-org ${getArgs().targetOrg} --verbose --json`,
+		`sf org display --target-org ${getArg(CliArgName.targetOrg)} --verbose --json`,
 		{ encoding: 'utf-8' }
 	)).result;
-	_connections[getArgs().targetOrg] = new Connection({
+	_connections[getArg(CliArgName.targetOrg)] = new Connection({
 		instanceUrl: targetLoginConfig.instanceUrl,
 		accessToken: targetLoginConfig.accessToken
 	});
@@ -55,14 +55,14 @@ export const getConnection = (orgAlias: string): Connection => {
 
 export const getSourceDb = (): Database => {
 	if (!_sourceDb) {
-		_sourceDb = new Database(getConnection(getArgs().sourceOrg));
+		_sourceDb = new Database(getConnection(getArg(CliArgName.sourceOrg)));
 	}
 	return _sourceDb;
 }
 
 export const getTargetDb = (): Database => {
 	if (!_targetDb) {
-		_targetDb = new Database(getConnection(getArgs().targetOrg));
+		_targetDb = new Database(getConnection(getArg(CliArgName.targetOrg)));
 	}
 	return _targetDb;
 }

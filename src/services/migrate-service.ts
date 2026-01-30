@@ -1,7 +1,7 @@
 import { SoqlBuilder } from "./soql-builder.ts";
 import { getSourceDb, getTargetDb } from '../cli.ts'
 import { SobjectReferenceService } from "./sobject-reference-service.ts";
-import type { TreeConfig } from "../types/types.ts";
+import { FieldType, type TreeConfig } from "../types/types.ts";
 
 export class MigrateService {
 
@@ -18,26 +18,31 @@ export class MigrateService {
 	}
 
 	async migrateData(): Promise<void> {
+		console.log('🔄 Migration dependencies...');
 		await this._migrateDependencies();
-		await this._syncRecordTypeReferences(this._treeConfig);
-		
-		console.log('🔄 Migration main tree...');
-		await this._migrateTree(this._treeConfig);
-		console.log('✅ Migration main tree completed...\n');
-		
-		await this._updateRecordsWithReferences();
+		console.log('\n✅ Migration dependencies completed...');
+
+		console.log('\n🔄 Migration main tree...');
+		await this._migrateConfig(this._treeConfig);
+		console.log('\n✅ Migration main tree completed...\n');
 	}
 
 	async _migrateDependencies(): Promise<void> {
-		console.log('🔄 Migration dependencies...');
+		
 		if (!this._dependencyConfig) {
+			console.log(`\t⚠️  no dependencies configured.`);
 			return;
 		}
 		for (const config of this._dependencyConfig) {
-			await this._syncRecordTypeReferences(config);
-			await this._migrateTree(config);
+			await this._migrateConfig(config);
 		}
-		console.log('✅ Migration dependencies completed...\n');
+		
+	}
+
+	async _migrateConfig(treeConfig: TreeConfig): Promise<void> {
+		await this._syncRecordTypeReferences(treeConfig);
+		await this._migrateTree(treeConfig);
+		await this._updateRecordsWithReferences();
 	}
 
 	async _migrateTree(treeConfig: TreeConfig): Promise<void> {
@@ -46,14 +51,20 @@ export class MigrateService {
 			return;
 		}
 		const records = await getSourceDb().query(soql);
-
-		!records?.length && console.log(`\t⚠️  no records found for ${treeConfig.apiName} Sobject.`);
+		if (!records?.length) {
+			console.log(`\t⚠️  no records found for ${treeConfig.apiName} Sobject.`);
+			return;
+		}
 
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
 
-		const recordsToInsert = await this._sobjectReferenceService.assignReferences(records, treeConfig.apiName);
-		
-		const dbResults = treeConfig.externalIdField != null
+		const recordsToInsert = await this._sobjectReferenceService.assignReferences(
+			records,
+			treeConfig.apiName,
+			(fieldMetadata) => fieldMetadata.createable
+		);
+
+		const dbResults = treeConfig.externalIdField
 			? await getTargetDb().upsert(treeConfig.apiName, recordsToInsert, treeConfig.externalIdField)
 			: await getTargetDb().insert(treeConfig.apiName, recordsToInsert);
 		await this._sobjectReferenceService.addReferencesFromDbResults(records, dbResults, treeConfig)
@@ -73,15 +84,14 @@ export class MigrateService {
 	}
 
 	_addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig {
-		treeConfig = treeConfig;
 		treeConfig.recordIds = records.map(record => record.Id);
 		return treeConfig;
 	}
 
 	async _syncRecordTypeReferences(config: TreeConfig): Promise<void>  {
-		console.log('📥 Including Record Type references...');
+		console.log('\n📥 Including Record Type references...');
 		await this._sobjectReferenceService.addRecordTypeReferences(config);
-		console.log('\t✅ Record Type references included successfully\n');
+		console.log('\t✅ Record Type references included successfully');
 	}
 
 	async _updateRecordsWithReferences(): Promise<void>  {
@@ -90,7 +100,8 @@ export class MigrateService {
 			if (this._objectTypeToSourceRecords[sObjectName]) {
 				const recordsToUpdate = await this._sobjectReferenceService.assignReferences(
 					this._objectTypeToSourceRecords[sObjectName],
-					sObjectName
+					sObjectName,
+					(fieldMetadata) => fieldMetadata.updateable || fieldMetadata.type === FieldType.id
 				);
 				await getTargetDb().update(sObjectName, recordsToUpdate);
 			}
