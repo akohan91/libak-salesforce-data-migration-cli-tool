@@ -62,7 +62,7 @@ export class ReferenceAnalyzerService {
 			const fields: Field[] = (await getSourceDb().sObjectDescribe(sObjectType)).fields;
 			const fieldNameToFieldMetadata: {[key: string]: Field;} = fields
 				.reduce((fieldNameToMetadata: {[key:string]: Field}, field) => {
-					if (field.type === FieldType.reference && field.createable && field.updateable) {
+					if (field.type === FieldType.reference) {
 						fieldNameToMetadata[field.name] = field;
 					}
 					return fieldNameToMetadata;
