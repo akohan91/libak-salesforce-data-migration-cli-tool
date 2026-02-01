@@ -75,31 +75,43 @@ Built on top of JSForce, it provides a configuration-driven approach to data mig
 ### Installation
 
 1. Clone the repository:
-   ```bash
+
+```bash
    git clone https://github.com/akohan91/libak-salesforce-data-migration-cli-tool.git
    cd libak-salesforce-data-migration-cli-tool
-   ```
+```
 
 2. Install dependencies:
-   ```bash
+
+```bash
    npm install
-   ```
+```
 
 3. Authenticate your Salesforce orgs with the Salesforce CLI:
-   ```bash
-   sf org login web --alias MySandbox
-   sf org login web --alias MyDevOrg
-   ```
+
+```bash
+sf org login web \
+  --instance-url https://MyDomainName--SandboxName.sandbox.my.salesforce.com \
+  --set-default \
+  --alias MySandbox
+
+sf org login web \
+  --instance-url https://MyDomainName--SandboxName.sandbox.my.salesforce.com \
+  --set-default \
+  --alias MyDevOrg
+```
 
 ### Quick Start
 
 1. Copy the example configuration:
-   ```bash
+
+```bash
    cp migration-config.example.json migration-config.json
-   ```
+```
 
 2. Edit `migration-config.json` to define your migration structure:
-   ```json
+
+```json
    {
      "dependencyConfig": [],
      "treeConfig": {
@@ -118,52 +130,54 @@ Built on top of JSForce, it provides a configuration-driven approach to data mig
        ]
      }
    }
-   ```
+```
 
 3. Run the migration:
-   ```bash
+
+```bash
    npm run dev -- \
      --source-org MySandbox \
      --target-org MyDevOrg \
      --export-config migration-config.json
-   ```
+```
 
    **Optional flags:**
    - `--analyze-references` - Analyze reference fields and auto-generate dependency configs without migrating data
-   - `--debug` - Display full error stack traces for troubleshooting
 
    **Alternative:** You can also run TypeScript directly:
-   ```bash
+
+```bash
    npx tsx src/index.ts --source-org MySandbox --target-org MyDevOrg --export-config migration-config.json
-   ```
+```
 
 4. Monitor the migration process:
-   ```
-   🚀 Salesforce Data Migration Tool
 
-   📡 Connecting to Salesforce orgs...
-              ✅ Successfully connected to source and target orgs
+```
+🚀 Salesforce Data Migration Tool
 
-   📄 Loading export configuration...
-       ✅ Configuration loaded: migration-config.json
+📡 Connecting to Salesforce orgs...
+    ✅ Successfully connected to source and target orgs
 
-   📥 Including Record Type references...
-       ✅ Record Type references included successfully
+📄 Loading export configuration...
+    ✅ Configuration loaded: migration-config.json
 
-   🔄 Migration dependencies...
-     ⚠️  no dependencies configured.
-   ✅ Migration dependencies completed...
+📥 Including Record Type references...
+    ✅ Record Type references included successfully
 
-   🔄 Migration main tree...
-     ✅ Inserted 1 Account record: 001xx000003DGbAAA1
-     ✅ Inserted 3 Contact records: 003xx000004DGbAAA1, 003xx000004DGbAAA2, 003xx000004DGbAAA3
+🔄 Migration dependencies...
+    ⚠️  no dependencies configured.
+✅ Migration dependencies completed...
 
-   🔄 Updating record references...
-     ✅ Updated 1 Account record: 001xx000003DGbAAA1
-     ✅ Updated 3 Contact records: 003xx000004DGbAAA1, 003xx000004DGbAAA2, 003xx000004DGbAAA3
+🔄 Migration main tree...
+    ✅ Inserted 1 Account record: 001xx000003DGbAAA1
+    ✅ Inserted 3 Contact records: 003xx000004DGbAAA1, 003xx000004DGbAAA2, 003xx000004DGbAAA3
 
-   ✅ Migration main tree completed...
-   ```
+🔄 Updating record references...
+    ✅ Updated 1 Account record: 001xx000003DGbAAA1
+    ✅ Updated 3 Contact records: 003xx000004DGbAAA1, 003xx000004DGbAAA2, 003xx000004DGbAAA3
+
+✅ Migration main tree completed...
+```
 
 ---
 
@@ -231,11 +245,11 @@ The migration configuration file defines the structure of your data migration. H
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `apiName` | string | Yes | The API name of the Salesforce object (e.g., "Account", "Contact") |
-| `externalIdField` | string/array | No | External ID field name(s) for upsert operations. Can be a string for single field or array for multiple fields (e.g., `["Field1__c", "Field2__c"]`). Leave empty for insert. |
+| `externalIdField` | string | No | External ID field name for upsert operations. Leave empty for insert. |
 | `recordIds` | array | Yes* | Array of specific record IDs to migrate from the parent object |
-| `referenceField` | string/null | Yes | The lookup/master-detail field name that references the parent (null for root objects) |
+| `referenceField` | string | No | The lookup/master-detail field name that references the parent (null for root objects) |
 | `excludedFields` | array | No | Array of field API names to exclude from the migration (optional, defaults to empty) |
-| `requiredReferences` | array | No | Array of reference field names to retrieve after insertion (e.g., `["PersonContactId"]` for Person Accounts) |
+| `requiredReferences` | array | No | Array of reference field names to force retrieve after insertion (e.g., `["PersonContactId"]` for Person Accounts) |
 | `children` | array | No | Array of child object configurations using the same structure (optional, supports nested hierarchies) |
 
 <blockquote><b>NOTE:</b> For root objects (like Account), set <code>referenceField</code> to <code>null</code> and specify <code>recordIds</code>. For child objects, specify the field that references the parent (e.g., <code>"AccountId"</code> for Contact). Child records are automatically queried based on parent record IDs, so <code>recordIds</code> is not needed for children.</blockquote>
@@ -244,8 +258,6 @@ The migration configuration file defines the structure of your data migration. H
 
 <blockquote><b>REQUIRED REFERENCES:</b> Use <code>requiredReferences</code> to specify reference fields that are automatically generated by Salesforce and needed for child record migrations. For example, Person Accounts automatically create a <code>PersonContactId</code> field that can be used to link related records. The tool queries the target org after insertion to retrieve these generated references and includes them in the ID mapping for child records.</blockquote>
 
--
--
 
 ## CLI Commands
 
@@ -262,7 +274,7 @@ npm run dev -- \
 
 ### Reference Analyzer & Dependency Config Generation
 
-Analyze reference fields in your data structure and auto-generate dependency configs without performing migration:
+Analyze reference fields in your data structure and auto-generate dependency configs for non included in the main "treeConfig" without performing migration:
 
 ```bash
 npm run dev -- \
@@ -290,20 +302,6 @@ The reference analyzer:
    - All referenced record IDs
 
 This helps you understand your data structure and automatically generates the `dependencyConfig` array for complex migrations.
-
-### Debug Mode
-
-Run migration with full error stack traces and rollback on error:
-
-```bash
-npm run dev -- \
-  --source-org MySandbox \
-  --target-org MyDevOrg \
-  --export-config migration-config.json \
-  --debug
-```
-
-<blockquote><b>NOTE:</b> The <code>npm run dev</code> command uses <code>tsx</code> to run TypeScript directly without compilation, providing fast development iterations. The <code>--</code> separator passes arguments to the script. On error, the tool will automatically rollback inserted records and display detailed error output.</blockquote>
 
 ---
 
