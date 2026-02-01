@@ -1,5 +1,11 @@
 {
 	"dependencyConfig": null,
+	"referenceIdMappings": [{
+		"sObjectType": "RecordType",
+		"masterField": "DeveloperName",
+		"conditionField": null,
+		"conditionValues": null
+	}],
 	"treeConfig": {
 		"apiName": "Account",
 		"externalIdField": "",

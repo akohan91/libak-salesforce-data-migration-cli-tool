@@ -9,6 +9,13 @@ export type TreeConfig = {
 	children?: TreeConfig[]
 }
 
+export type ReferenceIdMapping = {
+	sObjectType: string,
+	masterField: string,
+	conditionField?: string,
+	conditionValues?: any[]
+}
+
 export type DatabaseUnifiedResult = {
 	successCount: number,
 	successIds: Set<string>,
