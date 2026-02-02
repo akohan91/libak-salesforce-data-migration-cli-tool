@@ -24,7 +24,6 @@ export class ReferenceAnalyzerService {
 	async analyzeReferences(): Promise<void>  {
 		console.log('🔄 Analyzing references for provided treeConfig...');
 		await this._loadSourceRecords(this._treeConfig);
-		console.log('\n📥 Records for analysis successfully loaded');
 		await this._analyzeConfigReferences();
 		await this._defineDependencyConfigs();
 		console.log('\n✅ Analyzing references completed successfully');
@@ -43,7 +42,8 @@ export class ReferenceAnalyzerService {
 		const records = await getSourceDb().query(soql);
 		this._objectTypeToSourceRecords[treeConfig.apiName] = records;
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
-
+		console.log(`\t✅ ${treeConfig.apiName} records are loaded.`);
+		
 		if (!treeConfig.children?.length) {
 			return;
 		}
