@@ -21,8 +21,8 @@ export class MigrateService {
 	}
 
 	async migrateData(): Promise<void> {
-		await this._syncRecordTypeReferences();
-		console.log('🔄 Migration dependencies...');
+		await this._addDependencyConfigToSyncs();
+		console.log('\n🔄 Migration dependencies...');
 		await this._migrateDependencies();
 		console.log('\n✅ Migration dependencies completed...');
 
@@ -38,6 +38,7 @@ export class MigrateService {
 			return;
 		}
 		for (const dependencyConfig of this._dependencies.dependencyConfigsToCreate) {
+			console.log(`\n🔄 Migration ${dependencyConfig.apiName}...`);
 			await this._migrateConfig(dependencyConfig);
 		}
 		
@@ -91,13 +92,13 @@ export class MigrateService {
 		return treeConfig;
 	}
 
-	async _syncRecordTypeReferences(): Promise<void>  {
-		console.log('\n📥 Including Record Type references...');
+	async _addDependencyConfigToSyncs(): Promise<void>  {
+		console.log('\n📥 Syncing references from dependencyConfigsToSync...');
 		await this._sobjectReferenceService.addDependencyConfigToSyncs(
 			this._treeConfig,
 			this._dependencies
 		);
-		console.log('\t✅ Record Type references included successfully');
+		console.log('✅ Syncing references from dependencyConfigsToSync completed successfully');
 	}
 
 	async _updateRecordsWithReferences(): Promise<void>  {

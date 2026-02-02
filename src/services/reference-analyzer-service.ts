@@ -1,6 +1,6 @@
 import type { Field } from "jsforce";
 import { getSourceDb } from "./database.ts";
-import { Dependencies, FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
+import { Dependencies, DependencyConfigToSync, FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 
 export class ReferenceAnalyzerService {
@@ -10,7 +10,8 @@ export class ReferenceAnalyzerService {
 	_skipMainTreeRecordIds: string[];
 	_objectTypeToSourceRecords: {[key: string]: any[]};
 	_dependenciesMap: Map<string, Map<string, Set<string>>>;
-	_dependencyConfigs: TreeConfig[];
+	_dependencyConfigsToInsert: TreeConfig[];
+	_dependencyConfigsToSync: DependencyConfigToSync[];
 	
 	constructor(treeConfig: TreeConfig, dependencies: Dependencies) {
 		this._treeConfig = treeConfig;
@@ -18,7 +19,8 @@ export class ReferenceAnalyzerService {
 		this._skipMainTreeRecordIds = [];
 		this._objectTypeToSourceRecords = {};
 		this._dependenciesMap = new Map();
-		this._dependencyConfigs = [];
+		this._dependencyConfigsToInsert = [];
+		this._dependencyConfigsToSync = [];
 	}
 
 	async analyzeReferences(): Promise<void>  {
@@ -30,8 +32,10 @@ export class ReferenceAnalyzerService {
 
 		console.log('\n✅ Dependencies Map:');
 		console.log(this._dependenciesMap);
-		console.log('\n✅ Dependencies Configs:');
-		console.log(JSON.stringify(this._dependencyConfigs));
+		console.log('\n✅ Dependencies Configs to Insert:');
+		console.log(JSON.stringify(this._dependencyConfigsToInsert));
+		console.log('\n✅ Dependencies Configs to Sync:');
+		console.log(JSON.stringify(this._dependencyConfigsToSync));
 	}
 
 	async _loadSourceRecords(treeConfig: TreeConfig) {
@@ -97,8 +101,7 @@ export class ReferenceAnalyzerService {
 				
 				if (
 					!referenceObject ||
-					this._dependencies?.dependencySobjectsToSkip?.includes(referenceObject) ||
-					referenceObject === SObjectName.RecordType
+					this._dependencies?.dependencySobjectsToSkip?.includes(referenceObject)
 				) {
 					continue;
 				}
@@ -112,34 +115,56 @@ export class ReferenceAnalyzerService {
 	}
 
 	async _defineDependencyConfigs() {
-		const sObjectTypeToConfig: Map<string, TreeConfig> = new Map();
-		for (const sObjectTypeToIds of this._dependenciesMap.values()) {
-			for (const [sObjectType, recordIds] of sObjectTypeToIds) {
-				if (!sObjectTypeToConfig.has(sObjectType)) {
-					const externalIdField: string = (await getSourceDb().sObjectDescribe(sObjectType)).fields
-						.filter(field => field.externalId && field.unique)
-						.map(field => field.name)
-						.join(',');
-					sObjectTypeToConfig.set(
-						sObjectType,
-						{
-							apiName: sObjectType,
-							recordIds: [],
-							externalIdField,
-							referenceField: "",
-							excludedFields: [],
-							children: []
-						}
-					);
-				}
-				const mergedIds: Set<string> = new Set(sObjectTypeToConfig.get(sObjectType)?.recordIds);
-				recordIds.forEach(id => mergedIds.add(id));
-				const config = sObjectTypeToConfig.get(sObjectType);
-				if (config) {
-					config.recordIds = Array.from(mergedIds);
-				}
+		const sObjectTypeToInsertConfig: Map<string, TreeConfig> = new Map();
+		
+		const buildDependencyConfigsToInsert = async (sObjectType: string, recordIds: Set<string>) => {
+			if (!sObjectTypeToInsertConfig.has(sObjectType)) {
+				const externalIdField: string = (await getSourceDb().sObjectDescribe(sObjectType)).fields
+					.filter(field => field.externalId && field.unique)
+					.map(field => field.name)
+					.join(',');
+				sObjectTypeToInsertConfig.set(
+					sObjectType,
+					{
+						apiName: sObjectType,
+						recordIds: [],
+						externalIdField,
+						referenceField: "",
+						excludedFields: [],
+						children: []
+					}
+				);
+			}
+			const mergedIds: Set<string> = new Set(sObjectTypeToInsertConfig.get(sObjectType)?.recordIds);
+			recordIds.forEach(id => mergedIds.add(id));
+			const config = sObjectTypeToInsertConfig.get(sObjectType);
+			if (config) {
+				config.recordIds = Array.from(mergedIds);
 			}
 		}
-		this._dependencyConfigs = [...sObjectTypeToConfig.values()];
+
+		const sObjectTypeToSyncConfig: Map<string, DependencyConfigToSync> = new Map();
+		const buildDependencyConfigsToSync = (sObjectType: string) => {
+			if (!sObjectTypeToSyncConfig.has(sObjectType)) {
+				sObjectTypeToSyncConfig.set(
+					sObjectType,
+					{
+						sObjectType: sObjectType,
+						masterField: "",
+						conditionField: "",
+						conditionValues: []
+					}
+				);
+			}
+		}
+
+		for (const sObjectTypeToIds of this._dependenciesMap.values()) {
+			for (const [sObjectType, recordIds] of sObjectTypeToIds) {
+				await buildDependencyConfigsToInsert(sObjectType, recordIds);
+				buildDependencyConfigsToSync(sObjectType);
+			}
+		}
+		this._dependencyConfigsToInsert = [...sObjectTypeToInsertConfig.values()];
+		this._dependencyConfigsToSync = [...sObjectTypeToSyncConfig.values()];
 	}
 }

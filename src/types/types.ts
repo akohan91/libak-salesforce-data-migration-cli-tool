@@ -5,7 +5,7 @@ export type ExportConfig = {
 
 export type Dependencies = {
 	dependencyConfigsToCreate: TreeConfig[],
-	dependencyConfigsToSync: dependencyConfigToSync[],
+	dependencyConfigsToSync: DependencyConfigToSync[],
 	dependencySobjectsToSkip: string[]
 }
 
@@ -20,7 +20,7 @@ export type TreeConfig = {
 	children?: TreeConfig[]
 }
 
-export type dependencyConfigToSync = {
+export type DependencyConfigToSync = {
 	sObjectType: string,
 	masterField: string,
 	conditionField: string,
