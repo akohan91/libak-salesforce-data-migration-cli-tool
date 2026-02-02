@@ -135,17 +135,20 @@ export class Database {
 	}
 
 	_registerInsertedRecords(sObjectType: string, dbResults: SaveResult[]): void {
-		this._recordsForRollback.push(
-			new Map([[
-				sObjectType,
-				dbResults.reduce((recordIds: Set<string>, dbResult: SaveResult) => {
-					if (dbResult.id) {
-						recordIds.add(dbResult.id);
-					}
-					return recordIds;
-				},new Set<string>())
-			]])
-		);
+		const recordIds: Set<string> = dbResults.reduce((recordIds: Set<string>, dbResult: SaveResult) => {
+			if (dbResult.id) {
+				recordIds.add(dbResult.id);
+			}
+			return recordIds;
+		},new Set<string>());
+		if (recordIds.size > 0) {
+			this._recordsForRollback.push(
+				new Map([[
+					sObjectType,
+					recordIds
+				]])
+			);
+		}
 	}
 
 	async _doRollbackIfFailed(dbSummaryResult: DatabaseUnifiedResult) {

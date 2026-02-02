@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { initArguments, connectToOrgs, getArg } from './services/cli.ts'
 import { MigrateService } from './services/migrate-service.ts';
 import { ReferenceAnalyzerService } from './services/reference-analyzer-service.ts';
-import { CliArgName } from './types/types.ts';
+import { CliArgName, ExportConfig } from './types/types.ts';
 import { getTargetDb } from './services/database.ts';
 
 
@@ -16,7 +16,7 @@ try {
 	console.log('\t✅ Successfully connected to source and target orgs\n');
 
 	console.log('📄 Loading export configuration...');
-	const exportConfig = JSON.parse(
+	const exportConfig: ExportConfig = JSON.parse(
 		readFileSync(getArg(CliArgName.exportConfig), 'utf-8')
 	);
 	console.log(`\t✅ Configuration loaded: ${getArg(CliArgName.exportConfig)}\n`);
@@ -24,12 +24,12 @@ try {
 	if (getArg(CliArgName.analyzeReferences)) {
 		await new ReferenceAnalyzerService(
 			exportConfig.treeConfig,
-			exportConfig.skipSobjectDependencies,
+			exportConfig.dependencies,
 		).analyzeReferences();
 	} else {
 		await new MigrateService(
 			exportConfig.treeConfig,
-			exportConfig.dependencyConfig
+			exportConfig.dependencies
 		).migrateData();
 	}
 } catch (error) {

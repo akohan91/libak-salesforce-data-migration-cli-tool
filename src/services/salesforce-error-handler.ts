@@ -48,8 +48,8 @@ export const displayDatabaseResults = (
 		
 		summary.errors?.forEach(error => {
 			console.log(`\t • ${error.message}`);
-			console.log(`${error.statusCode ? '\n\t• Status Code: ' + error.statusCode : ''}`);
-			console.log(`${error.fields.length ? '\n\t• Fields: ' + error.fields : ''}`);
+			error.statusCode && console.log(`${error.statusCode ? '\n\t• Status Code: ' + error.statusCode : ''}`);
+			error.fields.length && console.log(`${error.fields.length ? '\n\t• Fields: ' + error.fields : ''}`);
 		});
 	}
 	return summary;
