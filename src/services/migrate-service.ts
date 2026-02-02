@@ -1,24 +1,28 @@
 import { SoqlBuilder } from "./soql-builder.ts";
 import { getSourceDb, getTargetDb } from './database.ts'
 import { SobjectReferenceService } from "./sobject-reference-service.ts";
-import { FieldType, type TreeConfig } from "../types/types.ts";
+import { FieldType, type TreeConfig, Dependencies } from "../types/types.ts";
 
 export class MigrateService {
 
 	_treeConfig: TreeConfig;
-	_dependencyConfig: TreeConfig[];
+	_dependencies: Dependencies;
 	_objectTypeToSourceRecords: {[key: string]: any[]};
 	_sobjectReferenceService: SobjectReferenceService;
 
-	constructor(treeConfig: TreeConfig, dependencyConfig: TreeConfig[]) {
+	constructor(
+		treeConfig: TreeConfig,
+		dependencies: Dependencies
+	) {
 		this._treeConfig = treeConfig;
-		this._dependencyConfig = dependencyConfig;
+		this._dependencies = dependencies;
 		this._objectTypeToSourceRecords = {};
 		this._sobjectReferenceService = new SobjectReferenceService();
 	}
 
 	async migrateData(): Promise<void> {
-		console.log('🔄 Migration dependencies...');
+		await this._addDependencyConfigToSyncs();
+		console.log('\n🔄 Migration dependencies...');
 		await this._migrateDependencies();
 		console.log('\n✅ Migration dependencies completed...');
 
@@ -29,18 +33,18 @@ export class MigrateService {
 
 	async _migrateDependencies(): Promise<void> {
 		
-		if (!this._dependencyConfig) {
+		if (!this._dependencies.dependencyConfigsToCreate) {
 			console.log(`\t⚠️  no dependencies configured.`);
 			return;
 		}
-		for (const config of this._dependencyConfig) {
-			await this._migrateConfig(config);
+		for (const dependencyConfig of this._dependencies.dependencyConfigsToCreate) {
+			console.log(`\n🔄 Migration ${dependencyConfig.apiName}...`);
+			await this._migrateConfig(dependencyConfig);
 		}
 		
 	}
 
 	async _migrateConfig(treeConfig: TreeConfig): Promise<void> {
-		await this._syncRecordTypeReferences(treeConfig);
 		await this._migrateTree(treeConfig);
 		await this._updateRecordsWithReferences();
 	}
@@ -88,10 +92,13 @@ export class MigrateService {
 		return treeConfig;
 	}
 
-	async _syncRecordTypeReferences(config: TreeConfig): Promise<void>  {
-		console.log('\n📥 Including Record Type references...');
-		await this._sobjectReferenceService.addRecordTypeReferences(config);
-		console.log('\t✅ Record Type references included successfully');
+	async _addDependencyConfigToSyncs(): Promise<void>  {
+		console.log('\n📥 Syncing references from dependencyConfigsToSync...');
+		await this._sobjectReferenceService.addDependencyConfigToSyncs(
+			this._treeConfig,
+			this._dependencies
+		);
+		console.log('✅ Syncing references from dependencyConfigsToSync completed successfully');
 	}
 
 	async _updateRecordsWithReferences(): Promise<void>  {

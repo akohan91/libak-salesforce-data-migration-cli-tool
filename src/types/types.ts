@@ -1,3 +1,14 @@
+export type ExportConfig = {
+	dependencies: Dependencies,
+	treeConfig: TreeConfig
+}
+
+export type Dependencies = {
+	dependencyConfigsToCreate: TreeConfig[],
+	dependencyConfigsToSync: DependencyConfigToSync[],
+	dependencySobjectsToSkip: string[]
+}
+
 export type TreeConfig = {
 	apiName: string,
 	externalIdField?: string,
@@ -7,6 +18,13 @@ export type TreeConfig = {
 	excludedFields?: string[],
 	requiredReferences?: string[],
 	children?: TreeConfig[]
+}
+
+export type DependencyConfigToSync = {
+	sObjectType: string,
+	masterField: string,
+	conditionField: string,
+	conditionValues: any[]
 }
 
 export type DatabaseUnifiedResult = {
@@ -33,9 +51,12 @@ export enum FieldType {
 
 export enum FieldName {
 	Id = 'Id',
-	RecordType = 'RecordType',
 	DeveloperName = 'DeveloperName',
 	SobjectType = 'SobjectType'
+}
+
+export enum SobjectType {
+	RecordType = 'RecordType',
 }
 
 export enum DML {

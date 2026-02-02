@@ -1,5 +1,5 @@
 import { getSourceDb, getTargetDb } from "./database.ts";
-import { FieldName, type TreeConfig } from "../types/types.ts";
+import { FieldName, SobjectType, type TreeConfig, Dependencies } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 import type { Field, SaveResult } from "jsforce";
 
@@ -75,37 +75,66 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addRecordTypeReferences(treeConfig: TreeConfig): Promise<void> {
-		const sObjectTypes = this._extractAllSobjectTypes(treeConfig);
-		const recordTypeSoql = new SoqlBuilder().buildSoqlByFieldValues(
-			[FieldName.Id, FieldName.DeveloperName],
-			FieldName.RecordType,
-			FieldName.SobjectType,
-			[...sObjectTypes.values()]
+	async addDependencyConfigToSyncs(
+		treeConfig: TreeConfig,
+		dependencies: Dependencies,
+	): Promise<void> {
+		const sObjectTypes = this._extractAllSobjectTypes(
+			treeConfig,
+			dependencies.dependencyConfigsToCreate
 		);
-		const sourceRecordTypes = await getSourceDb().query(recordTypeSoql);
-		const devNameToTargetRtId = (await getTargetDb().query(recordTypeSoql))
-			.reduce((result, recordType) => {
-				result.set(recordType.DeveloperName, recordType.Id)
-				return result
-			}, new Map());
-		sourceRecordTypes.forEach(sourceRecordType => {
-			this._sourceRecordIdToTargetRecordId.set(
-				sourceRecordType.Id,
-				devNameToTargetRtId.get(sourceRecordType.DeveloperName)
+		for (const dependencyConfigToSync of dependencies.dependencyConfigsToSync || [{
+			sObjectType: SobjectType.RecordType,
+			masterField: FieldName.DeveloperName,
+			conditionField: FieldName.SobjectType,
+			conditionValues: sObjectTypes,
+		}]) {
+			const refMapSobjectType: string = dependencyConfigToSync.sObjectType;
+			const masterField: string = dependencyConfigToSync.masterField;
+			const conditionFieldName: string = dependencyConfigToSync.sObjectType === SobjectType.RecordType
+				? FieldName.SobjectType
+				: dependencyConfigToSync.conditionField
+			const conditionValues: any[] = dependencyConfigToSync.sObjectType === SobjectType.RecordType
+				? [...sObjectTypes]
+				: dependencyConfigToSync.conditionValues
+
+			const soql = new SoqlBuilder().buildSoqlByFieldValues(
+				[FieldName.Id, masterField],
+				refMapSobjectType,
+				conditionFieldName,
+				conditionValues
 			);
-		});
+			const sourceRecords: any[] = await getSourceDb().query(soql);
+			const masterFieldValueToTargetRecId: Map<any, string> = (await getTargetDb().query(soql))
+				.reduce((result, record) => {
+					result.set(record[masterField], record.Id)
+					return result
+				}, new Map());
+			sourceRecords.forEach(sourceRecordType => {
+				this._sourceRecordIdToTargetRecordId.set(
+					sourceRecordType.Id,
+					masterFieldValueToTargetRecId.get(sourceRecordType[masterField])
+				);
+			});
+		}
 	}
 
-	_extractAllSobjectTypes(treeConfig: TreeConfig, sobjectTypes: Set<string> = new Set()): Set<string> {
+	_extractAllSobjectTypes(
+		treeConfig: TreeConfig,
+		dependencyConfigs: TreeConfig[],
+		sobjectTypes: Set<string> = new Set(),
+	): Set<string> {
 		sobjectTypes.add(treeConfig.apiName);
 		
 		if (!treeConfig.children?.length) {
 			return sobjectTypes;
 		}
 		
-		for (let childConfig of treeConfig.children) {
-			sobjectTypes = this._extractAllSobjectTypes(childConfig, sobjectTypes);
+		for (const childConfig of treeConfig.children || []) {
+			sobjectTypes = this._extractAllSobjectTypes(childConfig, [], sobjectTypes);
+		}
+		for (const dependencyConfig of dependencyConfigs || []) {
+			sobjectTypes = this._extractAllSobjectTypes(dependencyConfig, [], sobjectTypes);
 		}
 		return sobjectTypes;
 	}
