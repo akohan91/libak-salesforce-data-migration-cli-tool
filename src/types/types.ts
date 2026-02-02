@@ -12,8 +12,8 @@ export type TreeConfig = {
 export type ReferenceIdMapping = {
 	sObjectType: string,
 	masterField: string,
-	conditionField?: string,
-	conditionValues?: any[]
+	conditionField: string,
+	conditionValues: any[]
 }
 
 export type DatabaseUnifiedResult = {
@@ -40,9 +40,12 @@ export enum FieldType {
 
 export enum FieldName {
 	Id = 'Id',
-	RecordType = 'RecordType',
 	DeveloperName = 'DeveloperName',
 	SobjectType = 'SobjectType'
+}
+
+export enum SobjectType {
+	RecordType = 'RecordType',
 }
 
 export enum DML {

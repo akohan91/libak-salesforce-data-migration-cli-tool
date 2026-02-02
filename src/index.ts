@@ -29,7 +29,8 @@ try {
 	} else {
 		await new MigrateService(
 			exportConfig.treeConfig,
-			exportConfig.dependencyConfig
+			exportConfig.dependencyConfig,
+			exportConfig.referenceIdMappings
 		).migrateData();
 	}
 } catch (error) {

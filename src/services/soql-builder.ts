@@ -43,10 +43,11 @@ export class SoqlBuilder {
 	}
 
 	buildSoqlByFieldValues(fieldsToSelect: string[], sobjectApiName: string, fieldName: string, values: any[]): string {
-		return `
+		const soql = `
 			SELECT ${fieldsToSelect.join(',')}
-			FROM ${sobjectApiName}
-			WHERE ${fieldName} IN (${values.map(value => `'${value}'`).join(',')})`
+			FROM ${sobjectApiName}` +
+			(!fieldName || !values ? '' : ` WHERE ${fieldName} IN (${values.map(value => `'${value}'`).join(',')})`)
+		return soql;
 	}
 
 	async _getAllFieldsForConfig(treeConfig: TreeConfig) {

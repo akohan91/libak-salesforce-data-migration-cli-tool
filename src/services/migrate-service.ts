@@ -1,7 +1,7 @@
 import { SoqlBuilder } from "./soql-builder.ts";
 import { getSourceDb, getTargetDb } from './database.ts'
 import { SobjectReferenceService } from "./sobject-reference-service.ts";
-import { FieldType, type TreeConfig } from "../types/types.ts";
+import { FieldType, ReferenceIdMapping, type TreeConfig } from "../types/types.ts";
 
 export class MigrateService {
 
@@ -9,15 +9,22 @@ export class MigrateService {
 	_dependencyConfig: TreeConfig[];
 	_objectTypeToSourceRecords: {[key: string]: any[]};
 	_sobjectReferenceService: SobjectReferenceService;
+	_referenceIdMappings: ReferenceIdMapping[];
 
-	constructor(treeConfig: TreeConfig, dependencyConfig: TreeConfig[]) {
+	constructor(
+		treeConfig: TreeConfig,
+		dependencyConfig: TreeConfig[],
+		referenceIdMappings: ReferenceIdMapping[]
+	) {
 		this._treeConfig = treeConfig;
 		this._dependencyConfig = dependencyConfig;
+		this._referenceIdMappings = referenceIdMappings;
 		this._objectTypeToSourceRecords = {};
 		this._sobjectReferenceService = new SobjectReferenceService();
 	}
 
 	async migrateData(): Promise<void> {
+		await this._syncRecordTypeReferences();
 		console.log('🔄 Migration dependencies...');
 		await this._migrateDependencies();
 		console.log('\n✅ Migration dependencies completed...');
@@ -40,7 +47,6 @@ export class MigrateService {
 	}
 
 	async _migrateConfig(treeConfig: TreeConfig): Promise<void> {
-		await this._syncRecordTypeReferences(treeConfig);
 		await this._migrateTree(treeConfig);
 		await this._updateRecordsWithReferences();
 	}
@@ -88,9 +94,13 @@ export class MigrateService {
 		return treeConfig;
 	}
 
-	async _syncRecordTypeReferences(config: TreeConfig): Promise<void>  {
+	async _syncRecordTypeReferences(): Promise<void>  {
 		console.log('\n📥 Including Record Type references...');
-		await this._sobjectReferenceService.addRecordTypeReferences(config);
+		await this._sobjectReferenceService.addReferenceIdMappings(
+			this._treeConfig,
+			this._dependencyConfig,
+			this._referenceIdMappings
+		);
 		console.log('\t✅ Record Type references included successfully');
 	}
 
