@@ -1,3 +1,14 @@
+export type ExportConfig = {
+	dependencies: Dependencies,
+	treeConfig: TreeConfig
+}
+
+export type Dependencies = {
+	dependencyConfigsToCreate: TreeConfig[],
+	dependencyConfigsToSync: dependencyConfigToSync[],
+	dependencySobjectsToSkip: string[]
+}
+
 export type TreeConfig = {
 	apiName: string,
 	externalIdField?: string,
@@ -9,7 +20,7 @@ export type TreeConfig = {
 	children?: TreeConfig[]
 }
 
-export type ReferenceIdMapping = {
+export type dependencyConfigToSync = {
 	sObjectType: string,
 	masterField: string,
 	conditionField: string,

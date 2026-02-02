@@ -1,11 +1,14 @@
 {
-	"dependencyConfig": null,
-	"referenceIdMappings": [{
-		"sObjectType": "RecordType",
-		"masterField": "DeveloperName",
-		"conditionField": null,
-		"conditionValues": null
-	}],
+	"dependencies": {
+		"dependencyConfigsToCreate": null,
+		"dependencyConfigsToSync": [{
+			"sObjectType": "RecordType",
+			"masterField": "DeveloperName",
+			"conditionField": null,
+			"conditionValues": null
+		}],
+		"dependencySobjectsToSkip": ["User", "Group"]
+	},
 	"treeConfig": {
 		"apiName": "Account",
 		"externalIdField": "",

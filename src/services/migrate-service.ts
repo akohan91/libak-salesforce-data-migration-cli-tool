@@ -1,24 +1,21 @@
 import { SoqlBuilder } from "./soql-builder.ts";
 import { getSourceDb, getTargetDb } from './database.ts'
 import { SobjectReferenceService } from "./sobject-reference-service.ts";
-import { FieldType, ReferenceIdMapping, type TreeConfig } from "../types/types.ts";
+import { FieldType, type TreeConfig, Dependencies } from "../types/types.ts";
 
 export class MigrateService {
 
 	_treeConfig: TreeConfig;
-	_dependencyConfig: TreeConfig[];
+	_dependencies: Dependencies;
 	_objectTypeToSourceRecords: {[key: string]: any[]};
 	_sobjectReferenceService: SobjectReferenceService;
-	_referenceIdMappings: ReferenceIdMapping[];
 
 	constructor(
 		treeConfig: TreeConfig,
-		dependencyConfig: TreeConfig[],
-		referenceIdMappings: ReferenceIdMapping[]
+		dependencies: Dependencies
 	) {
 		this._treeConfig = treeConfig;
-		this._dependencyConfig = dependencyConfig;
-		this._referenceIdMappings = referenceIdMappings;
+		this._dependencies = dependencies;
 		this._objectTypeToSourceRecords = {};
 		this._sobjectReferenceService = new SobjectReferenceService();
 	}
@@ -36,12 +33,12 @@ export class MigrateService {
 
 	async _migrateDependencies(): Promise<void> {
 		
-		if (!this._dependencyConfig) {
+		if (!this._dependencies.dependencyConfigsToCreate) {
 			console.log(`\t⚠️  no dependencies configured.`);
 			return;
 		}
-		for (const config of this._dependencyConfig) {
-			await this._migrateConfig(config);
+		for (const dependencyConfig of this._dependencies.dependencyConfigsToCreate) {
+			await this._migrateConfig(dependencyConfig);
 		}
 		
 	}
@@ -96,10 +93,9 @@ export class MigrateService {
 
 	async _syncRecordTypeReferences(): Promise<void>  {
 		console.log('\n📥 Including Record Type references...');
-		await this._sobjectReferenceService.addReferenceIdMappings(
+		await this._sobjectReferenceService.addDependencyConfigToSyncs(
 			this._treeConfig,
-			this._dependencyConfig,
-			this._referenceIdMappings
+			this._dependencies
 		);
 		console.log('\t✅ Record Type references included successfully');
 	}

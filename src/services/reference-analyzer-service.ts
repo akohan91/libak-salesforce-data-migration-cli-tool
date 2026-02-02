@@ -1,20 +1,20 @@
 import type { Field } from "jsforce";
 import { getSourceDb } from "./database.ts";
-import { FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
+import { Dependencies, FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 
 export class ReferenceAnalyzerService {
 	
 	_treeConfig: TreeConfig;
-	_skipSobjectDependencies?: string[];
+	_dependencies?: Dependencies;
 	_skipMainTreeRecordIds: string[];
 	_objectTypeToSourceRecords: {[key: string]: any[]};
 	_dependenciesMap: Map<string, Map<string, Set<string>>>;
 	_dependencyConfigs: TreeConfig[];
 	
-	constructor(treeConfig: TreeConfig, skipSobjectDependencies: string[]) {
+	constructor(treeConfig: TreeConfig, dependencies: Dependencies) {
 		this._treeConfig = treeConfig;
-		this._skipSobjectDependencies = skipSobjectDependencies;
+		this._dependencies = dependencies;
 		this._skipMainTreeRecordIds = [];
 		this._objectTypeToSourceRecords = {};
 		this._dependenciesMap = new Map();
@@ -97,7 +97,7 @@ export class ReferenceAnalyzerService {
 				
 				if (
 					!referenceObject ||
-					this._skipSobjectDependencies?.includes(referenceObject) ||
+					this._dependencies?.dependencySobjectsToSkip?.includes(referenceObject) ||
 					referenceObject === SObjectName.RecordType
 				) {
 					continue;

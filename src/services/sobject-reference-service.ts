@@ -1,5 +1,5 @@
 import { getSourceDb, getTargetDb } from "./database.ts";
-import { FieldName, ReferenceIdMapping, SobjectType, type TreeConfig } from "../types/types.ts";
+import { FieldName, SobjectType, type TreeConfig, Dependencies } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 import type { Field, SaveResult } from "jsforce";
 
@@ -75,29 +75,28 @@ export class SobjectReferenceService {
 		});
 	}
 
-	async addReferenceIdMappings(
+	async addDependencyConfigToSyncs(
 		treeConfig: TreeConfig,
-		dependencyConfigs: TreeConfig[],
-		referenceIdMappings: ReferenceIdMapping[]
+		dependencies: Dependencies,
 	): Promise<void> {
 		const sObjectTypes = this._extractAllSobjectTypes(
 			treeConfig,
-			dependencyConfigs
+			dependencies.dependencyConfigsToCreate
 		);
-		for (const referenceIdMapping of referenceIdMappings || [{
+		for (const dependencyConfigToSync of dependencies.dependencyConfigsToSync || [{
 			sObjectType: SobjectType.RecordType,
 			masterField: FieldName.DeveloperName,
 			conditionField: FieldName.SobjectType,
 			conditionValues: sObjectTypes,
 		}]) {
-			const refMapSobjectType: string = referenceIdMapping.sObjectType;
-			const masterField: string = referenceIdMapping.masterField;
-			const conditionFieldName: string = referenceIdMapping.sObjectType === SobjectType.RecordType
+			const refMapSobjectType: string = dependencyConfigToSync.sObjectType;
+			const masterField: string = dependencyConfigToSync.masterField;
+			const conditionFieldName: string = dependencyConfigToSync.sObjectType === SobjectType.RecordType
 				? FieldName.SobjectType
-				: referenceIdMapping.conditionField
-			const conditionValues: any[] = referenceIdMapping.sObjectType === SobjectType.RecordType
+				: dependencyConfigToSync.conditionField
+			const conditionValues: any[] = dependencyConfigToSync.sObjectType === SobjectType.RecordType
 				? [...sObjectTypes]
-				: referenceIdMapping.conditionValues
+				: dependencyConfigToSync.conditionValues
 
 			const soql = new SoqlBuilder().buildSoqlByFieldValues(
 				[FieldName.Id, masterField],
