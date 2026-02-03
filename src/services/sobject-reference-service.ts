@@ -4,8 +4,8 @@ import { SoqlBuilder } from "./soql-builder.ts";
 import type { Field, SaveResult } from "jsforce";
 
 export class SobjectReferenceService {
-	_referenceFields: string[];
-	_sourceRecordIdToTargetRecordId;
+	private _referenceFields: string[];
+	private _sourceRecordIdToTargetRecordId;
 	
 	constructor() {
 		this._referenceFields = [];
@@ -119,7 +119,7 @@ export class SobjectReferenceService {
 		}
 	}
 
-	_extractAllSobjectTypes(
+	private _extractAllSobjectTypes(
 		treeConfig: TreeConfig,
 		dependencyConfigs: TreeConfig[],
 		sobjectTypes: Set<string> = new Set(),
@@ -139,14 +139,14 @@ export class SobjectReferenceService {
 		return sobjectTypes;
 	}
 
-	_deleteNulls (record: any, fieldName: string) {
+	private _deleteNulls (record: any, fieldName: string) {
 		if (record[fieldName] === null || record[fieldName] === undefined) {
 			delete record[fieldName];
 		}
 		return record;
 	}
 
-	_assignReferences(record: any, fieldName: string) {
+	private _assignReferences(record: any, fieldName: string) {
 		const fieldValue = record[fieldName];
 		if (
 			this._referenceFields.includes(fieldName) &&

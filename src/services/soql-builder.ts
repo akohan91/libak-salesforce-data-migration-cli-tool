@@ -3,7 +3,7 @@ import type { Database } from "./database.ts";
 
 export class SoqlBuilder {
 
-	_database?: Database;
+	private _database?: Database;
 
 	constructor(database?: Database) {
 		this._database = database;
@@ -50,7 +50,7 @@ export class SoqlBuilder {
 		return soql;
 	}
 
-	async _getAllFieldsForConfig(treeConfig: TreeConfig) {
+	private async _getAllFieldsForConfig(treeConfig: TreeConfig) {
 		if (!this._database) {
 			throw new Error('The _getAllFieldsForConfig method requires Database instance.');
 		}

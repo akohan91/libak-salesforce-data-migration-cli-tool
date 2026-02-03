@@ -5,10 +5,10 @@ import { FieldType, type TreeConfig, Dependencies } from "../types/types.ts";
 
 export class MigrateService {
 
-	_treeConfig: TreeConfig;
-	_dependencies: Dependencies;
-	_objectTypeToSourceRecords: {[key: string]: any[]};
-	_sobjectReferenceService: SobjectReferenceService;
+	private _treeConfig: TreeConfig;
+	private _dependencies: Dependencies;
+	private _objectTypeToSourceRecords: {[key: string]: any[]};
+	private _sobjectReferenceService: SobjectReferenceService;
 
 	constructor(
 		treeConfig: TreeConfig,
@@ -31,7 +31,7 @@ export class MigrateService {
 		console.log('\n✅ Migration main tree completed...\n');
 	}
 
-	async _migrateDependencies(): Promise<void> {
+	private async _migrateDependencies(): Promise<void> {
 		
 		if (!this._dependencies.dependencyConfigsToCreate) {
 			console.log(`\t⚠️  no dependencies configured.`);
@@ -44,12 +44,12 @@ export class MigrateService {
 		
 	}
 
-	async _migrateConfig(treeConfig: TreeConfig): Promise<void> {
+	private async _migrateConfig(treeConfig: TreeConfig): Promise<void> {
 		await this._migrateTree(treeConfig);
 		await this._updateRecordsWithReferences();
 	}
 
-	async _migrateTree(treeConfig: TreeConfig): Promise<void> {
+	private async _migrateTree(treeConfig: TreeConfig): Promise<void> {
 		const soql = await new SoqlBuilder(getSourceDb()).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
@@ -87,12 +87,12 @@ export class MigrateService {
 		}
 	}
 
-	_addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig {
+	private _addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig {
 		treeConfig.recordIds = records.map(record => record.Id);
 		return treeConfig;
 	}
 
-	async _addDependencyConfigToSyncs(): Promise<void>  {
+	private async _addDependencyConfigToSyncs(): Promise<void>  {
 		console.log('\n📥 Syncing references from dependencyConfigsToSync...');
 		await this._sobjectReferenceService.addDependencyConfigToSyncs(
 			this._treeConfig,
@@ -101,7 +101,7 @@ export class MigrateService {
 		console.log('✅ Syncing references from dependencyConfigsToSync completed successfully');
 	}
 
-	async _updateRecordsWithReferences(): Promise<void>  {
+	private async _updateRecordsWithReferences(): Promise<void>  {
 		console.log('🔄 Updating record references...');
 		for (const sObjectName in this._objectTypeToSourceRecords) {
 			if (this._objectTypeToSourceRecords[sObjectName]) {
