@@ -1,6 +1,6 @@
 import type { Field } from "jsforce";
 import { getSourceDb } from "./database.ts";
-import { Dependencies, DependencyConfigToSync, FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
+import { Dependencies, DependencyConfigToSync, FieldType, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 
 export class ReferenceAnalyzerService {
@@ -51,7 +51,7 @@ export class ReferenceAnalyzerService {
 		if (!treeConfig.children?.length) {
 			return;
 		}
-		for (let childConfig of treeConfig.children) {
+		for (const childConfig of treeConfig.children) {
 			childConfig.parentRecordIds = treeConfig?.recordIds || [];
 			await this._loadSourceRecords(childConfig);
 		}
