@@ -5,10 +5,10 @@ import type { Connection, DescribeGlobalResult, DescribeSObjectResult, SaveResul
 
 export class Database {
 	
-	_connection: Connection;
-	_sObjectNameToDescribe: any;
-	_globalDescribe: DescribeGlobalResult | null;
-	_recordsForRollback: Map<string, Set<string>>[];
+	private _connection: Connection;
+	private _sObjectNameToDescribe: any;
+	private _globalDescribe: DescribeGlobalResult | null;
+	private _recordsForRollback: Map<string, Set<string>>[];
 
 	constructor(connection: Connection) {
 		this._connection = connection;
@@ -134,7 +134,7 @@ export class Database {
 		}
 	}
 
-	_registerInsertedRecords(sObjectType: string, dbResults: SaveResult[]): void {
+	private _registerInsertedRecords(sObjectType: string, dbResults: SaveResult[]): void {
 		const recordIds: Set<string> = dbResults.reduce((recordIds: Set<string>, dbResult: SaveResult) => {
 			if (dbResult.id) {
 				recordIds.add(dbResult.id);
@@ -151,7 +151,7 @@ export class Database {
 		}
 	}
 
-	async _doRollbackIfFailed(dbSummaryResult: DatabaseUnifiedResult) {
+	private async _doRollbackIfFailed(dbSummaryResult: DatabaseUnifiedResult) {
 		if (dbSummaryResult.errorCount === 0) {
 			return;
 		}

@@ -1,17 +1,17 @@
 import type { Field } from "jsforce";
 import { getSourceDb } from "./database.ts";
-import { Dependencies, DependencyConfigToSync, FieldType, SObjectName, type TreeConfig } from "../types/types.ts";
+import { Dependencies, DependencyConfigToSync, FieldType, type TreeConfig } from "../types/types.ts";
 import { SoqlBuilder } from "./soql-builder.ts";
 
 export class ReferenceAnalyzerService {
 	
-	_treeConfig: TreeConfig;
-	_dependencies?: Dependencies;
-	_skipMainTreeRecordIds: string[];
-	_objectTypeToSourceRecords: {[key: string]: any[]};
-	_dependenciesMap: Map<string, Map<string, Set<string>>>;
-	_dependencyConfigsToInsert: TreeConfig[];
-	_dependencyConfigsToSync: DependencyConfigToSync[];
+	private _treeConfig: TreeConfig;
+	private _dependencies?: Dependencies;
+	private _skipMainTreeRecordIds: string[];
+	private _objectTypeToSourceRecords: {[key: string]: any[]};
+	private _dependenciesMap: Map<string, Map<string, Set<string>>>;
+	private _dependencyConfigsToInsert: TreeConfig[];
+	private _dependencyConfigsToSync: DependencyConfigToSync[];
 	
 	constructor(treeConfig: TreeConfig, dependencies: Dependencies) {
 		this._treeConfig = treeConfig;
@@ -38,7 +38,7 @@ export class ReferenceAnalyzerService {
 		console.log(JSON.stringify(this._dependencyConfigsToSync));
 	}
 
-	async _loadSourceRecords(treeConfig: TreeConfig) {
+	private async _loadSourceRecords(treeConfig: TreeConfig) {
 		const soql = await new SoqlBuilder(getSourceDb()).buildSoqlForConfig(treeConfig);
 		if (!soql) {
 			return;
@@ -51,13 +51,13 @@ export class ReferenceAnalyzerService {
 		if (!treeConfig.children?.length) {
 			return;
 		}
-		for (let childConfig of treeConfig.children) {
+		for (const childConfig of treeConfig.children) {
 			childConfig.parentRecordIds = treeConfig?.recordIds || [];
 			await this._loadSourceRecords(childConfig);
 		}
 	}
 
-	async _analyzeConfigReferences(): Promise<void>  {
+	private async _analyzeConfigReferences(): Promise<void>  {
 		for (const sObjectType in this._objectTypeToSourceRecords) {
 			if (!this._objectTypeToSourceRecords[sObjectType]) {
 				continue;
@@ -77,14 +77,14 @@ export class ReferenceAnalyzerService {
 		}
 	}
 
-	_addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig  {
+	private _addTreeConfigRecordIds(treeConfig: TreeConfig, records: any[]): TreeConfig  {
 		const recordIds: string[] = records.map(record => record.Id);
 		treeConfig.recordIds = recordIds;
 		this._skipMainTreeRecordIds = [...this._skipMainTreeRecordIds, ...recordIds];
 		return treeConfig;
 	}
 
-	async _defineDependenciesMap(
+	private async _defineDependenciesMap(
 		record: any,
 		fieldNameToFieldMetadata: {[key: string]: Field},
 		sobjectType: string
@@ -114,7 +114,7 @@ export class ReferenceAnalyzerService {
 		}
 	}
 
-	async _defineDependencyConfigs() {
+	private async _defineDependencyConfigs() {
 		const sObjectTypeToInsertConfig: Map<string, TreeConfig> = new Map();
 		
 		const buildDependencyConfigsToInsert = async (sObjectType: string, recordIds: Set<string>) => {

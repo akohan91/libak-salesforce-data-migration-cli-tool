@@ -4,7 +4,7 @@ import { Command, type OptionValues }  from 'commander';
 import { CliArgName } from '../types/types.ts';
 
 let _argNameToValue: OptionValues;
-let _connections: {[key: string]: Connection} = {};
+const _connections: {[key: string]: Connection} = {};
 
 export const initArguments = (): void => {
 	const program = new Command();
