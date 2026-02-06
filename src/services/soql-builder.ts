@@ -30,7 +30,7 @@ export class SoqlBuilder {
 		}
 		return `
 		SELECT ${fieldsStr}
-		FROM ${treeConfig.apiName}
+		FROM ${treeConfig.sObjectType}
 		WHERE ${treeConfig.referenceField || FieldName.Id} IN (${recordIdList})` + 
 		(externalIdCondition ? ` AND (${externalIdCondition})` : '');
 	}
@@ -54,7 +54,7 @@ export class SoqlBuilder {
 		if (!this._database) {
 			throw new Error('The _getAllFieldsForConfig method requires Database instance.');
 		}
-		const sObjectMetadata = await this._database.sObjectDescribe(treeConfig.apiName);
+		const sObjectMetadata = await this._database.sObjectDescribe(treeConfig.sObjectType);
 		
 		return sObjectMetadata.fields
 			.filter((field) => {

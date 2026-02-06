@@ -38,7 +38,7 @@ export class MigrateService {
 			return;
 		}
 		for (const dependencyConfig of this._dependencies.dependencyConfigsToCreate) {
-			console.log(`\n🔄 Migration ${dependencyConfig.apiName}...`);
+			console.log(`\n🔄 Migration ${dependencyConfig.sObjectType}...`);
 			await this._migrateConfig(dependencyConfig);
 		}
 		
@@ -56,7 +56,7 @@ export class MigrateService {
 		}
 		const records = await getSourceDb().query(soql);
 		if (!records?.length) {
-			console.log(`\t⚠️  no records found for ${treeConfig.apiName} Sobject.`);
+			console.log(`\t⚠️  no records found for ${treeConfig.sObjectType} Sobject.`);
 			return;
 		}
 
@@ -64,15 +64,15 @@ export class MigrateService {
 
 		const recordsToInsert = await this._sobjectReferenceService.assignReferences(
 			records,
-			treeConfig.apiName,
+			treeConfig.sObjectType,
 			(fieldMetadata) => fieldMetadata.createable
 		);
 
 		const dbResults = treeConfig.externalIdField
-			? await getTargetDb().upsert(treeConfig.apiName, recordsToInsert, treeConfig.externalIdField)
-			: await getTargetDb().insert(treeConfig.apiName, recordsToInsert);
+			? await getTargetDb().upsert(treeConfig.sObjectType, recordsToInsert, treeConfig.externalIdField)
+			: await getTargetDb().insert(treeConfig.sObjectType, recordsToInsert);
 		await this._sobjectReferenceService.addReferencesFromDbResults(records, dbResults, treeConfig)
-		this._objectTypeToSourceRecords[treeConfig.apiName] = records.map(record => {
+		this._objectTypeToSourceRecords[treeConfig.sObjectType] = records.map(record => {
 			treeConfig.requiredReferences?.forEach(fieldName => delete record[fieldName]);
 			return record;
 		});

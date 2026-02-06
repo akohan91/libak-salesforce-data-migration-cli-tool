@@ -10,36 +10,36 @@
 		"dependencySobjectsToSkip": ["User", "Group"]
 	},
 	"treeConfig": {
-		"apiName": "Account",
+		"sObjectType": "Account",
 		"externalIdField": "",
 		"recordIds": [ "001XXXXXXXXXXXXXXX" ],
 		"referenceField": null,
 		"excludedFields": [],
 		"children": [{
-				"apiName": "Contact",
+				"sObjectType": "Contact",
 				"externalIdField": "",
 				"referenceField": "AccountId"
 			},
 			{
-				"apiName": "Case",
+				"sObjectType": "Case",
 				"externalIdField": "",
 				"referenceField": "AccountId",
 				"excludedFields": []
 			},
 			{
-				"apiName": "Opportunity",
+				"sObjectType": "Opportunity",
 				"externalIdField": "",
 				"referenceField": "AccountId",
 				"excludedFields": [],
 				"children": [{
-					"apiName": "OpportunityLineItem",
+					"sObjectType": "OpportunityLineItem",
 					"externalIdField": "",
 					"referenceField": "OpportunityId",
 					"excludedFields": []
 				}]
 			},
 			{
-				"apiName": "Contract",
+				"sObjectType": "Contract",
 				"externalIdField": "",
 				"referenceField": "AccountId",
 				"excludedFields": []

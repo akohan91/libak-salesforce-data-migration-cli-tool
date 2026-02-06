@@ -10,7 +10,7 @@ export type Dependencies = {
 }
 
 export type TreeConfig = {
-	apiName: string,
+	sObjectType: string,
 	externalIdField?: string,
 	recordIds?: string[],
 	parentRecordIds?: string[],
