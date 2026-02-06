@@ -126,7 +126,7 @@ sf org login web \
        "dependencySobjectsToSkip": ["User", "Group"]
      },
      "treeConfig": {
-       "apiName": "Account",
+       "sObjectType": "Account",
        "externalIdField": "BackendId__c",
        "recordIds": ["001XXXXXXXXXXXXXXX"],
        "referenceField": null,
@@ -134,7 +134,7 @@ sf org login web \
        "requiredReferences": ["PersonContactId"],
        "children": [
          {
-           "apiName": "Contact",
+           "sObjectType": "Contact",
            "externalIdField": "BackendId__c",
            "referenceField": "AccountId"
          }
@@ -212,31 +212,31 @@ The migration configuration file defines the structure of your data migration. H
     "dependencySobjectsToSkip": ["User", "Group"]
   },
   "treeConfig": {
-    "apiName": "Account",
+    "sObjectType": "Account",
     "externalIdField": "",
     "recordIds": ["001XXXXXXXXXXXXXXX"],
     "referenceField": null,
     "excludedFields": [],
     "children": [
       {
-        "apiName": "Contact",
+        "sObjectType": "Contact",
         "externalIdField": "",
         "referenceField": "AccountId"
       },
       {
-        "apiName": "Case",
+        "sObjectType": "Case",
         "externalIdField": "",
         "referenceField": "AccountId",
         "excludedFields": []
       },
       {
-        "apiName": "Opportunity",
+        "sObjectType": "Opportunity",
         "externalIdField": "",
         "referenceField": "AccountId",
         "excludedFields": [],
         "children": [
           {
-            "apiName": "OpportunityLineItem",
+            "sObjectType": "OpportunityLineItem",
             "externalIdField": "",
             "referenceField": "OpportunityId",
             "excludedFields": []
@@ -244,7 +244,7 @@ The migration configuration file defines the structure of your data migration. H
         ]
       },
       {
-        "apiName": "Contract",
+        "sObjectType": "Contract",
         "externalIdField": "",
         "referenceField": "AccountId",
         "excludedFields": []
@@ -270,7 +270,7 @@ The migration configuration file defines the structure of your data migration. H
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `apiName` | string | Yes | The API name of the Salesforce object (e.g., "Account", "Contact") |
+| `sObjectType` | string | Yes | The API name of the Salesforce object (e.g., "Account", "Contact") |
 | `externalIdField` | string | No | External ID field name for upsert operations. Leave empty for insert. |
 | `recordIds` | array | Yes* | Array of specific record IDs to migrate from the parent object |
 | `referenceField` | string | No | The lookup/master-detail field name that references the parent (null for root objects) |

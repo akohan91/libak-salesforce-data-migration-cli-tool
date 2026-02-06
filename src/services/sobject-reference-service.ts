@@ -56,7 +56,7 @@ export class SobjectReferenceService {
 		const recordIdToTargetRecord = (await getTargetDb().query(
 			new SoqlBuilder().buildSoqlByIds(
 				[FieldName.Id, ...treeConfig.requiredReferences],
-				treeConfig.apiName,
+				treeConfig.sObjectType,
 				[...sourceRecordIdToTargetRecordId.values()]
 			)
 		)).reduce((recordIdToRecord, record) => {
@@ -124,7 +124,7 @@ export class SobjectReferenceService {
 		dependencyConfigs: TreeConfig[],
 		sobjectTypes: Set<string> = new Set(),
 	): Set<string> {
-		sobjectTypes.add(treeConfig.apiName);
+		sobjectTypes.add(treeConfig.sObjectType);
 		
 		if (!treeConfig.children?.length) {
 			return sobjectTypes;

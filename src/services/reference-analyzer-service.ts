@@ -44,9 +44,9 @@ export class ReferenceAnalyzerService {
 			return;
 		}
 		const records = await getSourceDb().query(soql);
-		this._objectTypeToSourceRecords[treeConfig.apiName] = records;
+		this._objectTypeToSourceRecords[treeConfig.sObjectType] = records;
 		treeConfig = this._addTreeConfigRecordIds(treeConfig, records);
-		console.log(`\t✅ ${treeConfig.apiName} records are loaded.`);
+		console.log(`\t✅ ${treeConfig.sObjectType} records are loaded.`);
 		
 		if (!treeConfig.children?.length) {
 			return;
@@ -126,7 +126,7 @@ export class ReferenceAnalyzerService {
 				sObjectTypeToInsertConfig.set(
 					sObjectType,
 					{
-						apiName: sObjectType,
+						sObjectType: sObjectType,
 						recordIds: [],
 						externalIdField,
 						referenceField: "",
